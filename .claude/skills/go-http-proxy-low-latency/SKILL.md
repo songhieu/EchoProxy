@@ -288,7 +288,7 @@ export const options = {
 export default function () {
   const res = http.post('http://localhost:8080/', JSON.stringify({foo: 'bar'}), {
     headers: {
-      'X-Echo-Key': __ENV.SID_KEY,
+      'X-Echo-Key': __ENV.ECHO_KEY,
       'X-Echo-Target': 'http://upstream-mock:9000/echo',
       'Content-Type': 'application/json',
     },

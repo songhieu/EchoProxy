@@ -18,7 +18,7 @@ cd "$(dirname "$0")"
 PROXY_URL="${PROXY_URL:-http://localhost:8080}"
 ADMIN_URL="${ADMIN_URL:-http://localhost:6060}"
 UPSTREAM_URL="${UPSTREAM_URL:-http://upstream-mock:9000}"
-SID_KEY="${SID_KEY:-sk_test_demo}"
+ECHO_KEY="${ECHO_KEY:-sk_test_demo}"
 STAGES="${STAGES:-1000,5000,10000,20000,35000,50000}"
 STAGE_DUR="${STAGE_DUR:-30s}"
 
@@ -54,7 +54,7 @@ docker exec -i "$pg_container" \
 # 3. Smoke check: one request must succeed before we ramp.
 blue "→ smoke check"
 code=$(curl -s -o /dev/null -w '%{http_code}' \
-  -H "X-Echo-Key: ${SID_KEY}" \
+  -H "X-Echo-Key: ${ECHO_KEY}" \
   -H "X-Echo-Target: ${UPSTREAM_URL}" \
   -X POST -d '{"foo":"bar"}' "${PROXY_URL}/echo")
 if [[ "$code" != "200" ]]; then
@@ -80,7 +80,7 @@ summary="results/stress_${ts}.json"
 docker run --rm -i --network host \
   -e PROXY_URL="${PROXY_URL}" \
   -e UPSTREAM_URL="${UPSTREAM_URL}" \
-  -e SID_KEY="${SID_KEY}" \
+  -e ECHO_KEY="${ECHO_KEY}" \
   -e STAGES="${STAGES}" \
   -e STAGE_DUR="${STAGE_DUR}" \
   -v "$PWD:/work" -w /work \

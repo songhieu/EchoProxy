@@ -11,7 +11,7 @@ import { check } from 'k6';
 
 const PROXY  = __ENV.PROXY_URL    || 'http://localhost:8080';
 const TARGET = __ENV.UPSTREAM_URL || 'http://upstream-mock:9000';
-const KEY    = __ENV.SID_KEY      || 'sk_test_demo';
+const KEY    = __ENV.ECHO_KEY     || 'sk_test_demo';
 const DUR    = __ENV.STAGE_DUR    || '30s';
 
 const STAGES = (__ENV.STAGES || '500,1000,2000,5000,10000,20000')

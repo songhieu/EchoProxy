@@ -18,13 +18,13 @@ ECHOPROXY_ENDPOINT=http://localhost:8081
 `bootstrap/app.php` (Laravel 11):
 ```php
 ->withMiddleware(function ($middleware) {
-    $middleware->append(\Sidtrack\Sdk\Middleware\CaptureRequests::class);
+    $middleware->append(\Echoproxy\Sdk\Middleware\CaptureRequests::class);
 })
 ```
 
 `Kernel::$middleware` (Laravel 10):
 ```php
-\Sidtrack\Sdk\Middleware\CaptureRequests::class,
+\Echoproxy\Sdk\Middleware\CaptureRequests::class,
 ```
 
 ## Capture outbound HTTP
@@ -32,8 +32,8 @@ ECHOPROXY_ENDPOINT=http://localhost:8081
 ```php
 use GuzzleHttp\Client as Guzzle;
 use GuzzleHttp\HandlerStack;
-use Sidtrack\Sdk\Client;
-use Sidtrack\Sdk\Http\GuzzleMiddleware;
+use Echoproxy\Sdk\Client;
+use Echoproxy\Sdk\Http\GuzzleMiddleware;
 
 $stack = HandlerStack::create();
 $stack->push(GuzzleMiddleware::create(app(Client::class)));

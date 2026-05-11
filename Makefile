@@ -84,7 +84,7 @@ migrate: migrate-postgres migrate-clickhouse ## Run all migrations
 .PHONY: bench-proxy
 bench-proxy: ## Run k6 benchmark on proxy-gateway (target: p99 < 20ms @ 5000 RPS)
 	docker run --rm -i --network host \
-		-e SID_KEY=$${SID_KEY:-sk_test_demo} \
+		-e ECHO_KEY=$${ECHO_KEY:-sk_test_demo} \
 		grafana/k6 run - < proxy-gateway/bench/k6.js
 
 .PHONY: bench-stress

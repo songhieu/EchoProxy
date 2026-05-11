@@ -14,11 +14,11 @@ Open http://localhost:3000, sign up, create a project, create an API key, copy t
 ## Smoke test
 
 ```bash
-SID_KEY="sk_live_xxx"   # the raw key from the dashboard
+ECHO_KEY="sk_live_xxx"   # the raw key from the dashboard
 
 # Round-trip a request through the proxy
 curl -i \
-  -H "X-Echo-Key: $SID_KEY" \
+  -H "X-Echo-Key: $ECHO_KEY" \
   -H "X-Echo-Target: https://httpbin.org" \
   http://localhost:8080/get
 
@@ -35,7 +35,7 @@ The dashboard's Logs tab should show the event. Analytics tab populates after a 
 import sdk "echoproxy/sdk-reference-go"
 
 c, _ := sdk.New(sdk.Config{
-    APIKey:       os.Getenv("SID_KEY"),
+    APIKey:       os.Getenv("ECHO_KEY"),
     EndpointHTTP: "http://localhost:8081",
 })
 defer c.Close(context.Background())

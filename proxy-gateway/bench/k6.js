@@ -21,7 +21,7 @@ export const options = {
 
 const PROXY = __ENV.PROXY_URL || 'http://localhost:8080';
 const TARGET = __ENV.UPSTREAM_URL || 'http://upstream-mock:9000/echo';
-const KEY = __ENV.SID_KEY || 'sk_test_demo';
+const KEY = __ENV.ECHO_KEY || 'sk_test_demo';
 
 export default function () {
   const res = http.post(PROXY + '/echo', JSON.stringify({ foo: 'bar' }), {
