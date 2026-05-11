@@ -73,20 +73,57 @@ This works automatically once `id-token: write` permission is set (already done)
 Provenance is great for supply-chain trust — published packages get a
 verifiable "built from commit X via workflow Y" attestation.
 
-### 3. Packagist — Laravel SDK
+### 3. Packagist — Laravel SDK (via subtree mirror)
 
-One-time setup, **no CI**:
+**Why subtree mirror**: Packagist + Composer require `composer.json` at
+the repo ROOT. EchoProxy is a monorepo with the SDK at `sdk-laravel/`,
+so we follow the standard pattern (same as Symfony / Laravel themselves):
+mirror the subdirectory to a standalone repo, then submit *that* to
+Packagist. The mirror is automated via `.github/workflows/sdk-laravel-mirror.yml`.
 
-1. Go to https://packagist.org/packages/submit
-2. Paste: `https://github.com/songhieu/EchoProxy`
-3. Submit. Packagist accepts the package as `echoproxy/sdk-laravel` (matches `composer.json` `name`).
-4. Optionally enable GitHub webhook for instant updates:
-   - On Packagist package page → Settings → "Set up a service hook on GitHub" button
-   - Or manually: GitHub repo Settings → Webhooks → Add webhook → URL `https://packagist.org/api/github?username=songhieu`, content type JSON, secret from Packagist API page
+**One-time setup:**
 
-Without webhook, Packagist polls every ~30 minutes. With webhook, new tags appear within seconds.
+1. **Create empty mirror repo** on GitHub:
+   - Name: `echoproxy-sdk-laravel`
+   - Visibility: Public
+   - **Do not** initialize with README/license — the mirror replaces history
 
-⚠️ **The package name `echoproxy/sdk-laravel`** must match `composer.json` `name`. If you change the composer name, also resubmit on Packagist (or rename via Packagist UI).
+2. **Generate a PAT** for the mirror to push:
+   - https://github.com/settings/tokens/new
+   - Note: `EchoProxy sdk-laravel mirror`
+   - Scope: `repo` (full control). Expiration: as long as you trust.
+   - Copy the token.
+
+3. **Add as secret** on the monorepo:
+   - `https://github.com/songhieu/EchoProxy/settings/secrets/actions` → New repository secret
+   - Name: `MIRROR_TOKEN`, value: paste token.
+
+4. **Trigger the mirror once** to populate the new repo:
+   ```bash
+   gh workflow run sdk-laravel-mirror.yml -R songhieu/EchoProxy
+   # or just push any commit to main
+   ```
+   Watch it: `gh run watch -R songhieu/EchoProxy`
+
+5. **Submit the MIRROR repo to Packagist** (NOT the monorepo):
+   - https://packagist.org/packages/submit
+   - Paste: `https://github.com/songhieu/echoproxy-sdk-laravel`
+   - Submit. Now Packagist sees `composer.json` at the root and accepts.
+   - Package URL: https://packagist.org/packages/echoproxy/sdk-laravel
+
+6. **(Optional) Webhook for instant updates** instead of 30-min poll:
+   - On Packagist package page → Settings → "Set up a service hook on GitHub"
+   - This installs a webhook on the `echoproxy-sdk-laravel` repo (not the monorepo)
+   - Any tag pushed there now refreshes Packagist within seconds
+
+**Per-release:** nothing manual. `git push origin v0.2.0` from the
+monorepo triggers `sdk-laravel-mirror.yml` → tag `v0.2.0` lands on the
+mirror repo → Packagist pulls.
+
+⚠️ **Composer package name** `echoproxy/sdk-laravel` (from
+`composer.json`) is independent of the mirror repo name. Don't change
+the `composer.json` `name` field unless you also rename the Packagist
+package.
 
 ### 4. Go — sdk-reference-go
 

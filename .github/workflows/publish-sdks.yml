@@ -109,13 +109,17 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
 
-  # ─── Laravel → Packagist ────────────────────────────────────────────────────
-  # Packagist polls the GitHub repo for new tags automatically once the
-  # package is submitted at packagist.org/packages/submit. The submission is
-  # a one-time manual step; no CI action is required to "publish" a tag.
-  # We just verify composer.json is valid here.
+  # ─── Laravel → Packagist (validate only) ────────────────────────────────────
+  # Packagist requires composer.json at the REPO ROOT — it can't read a
+  # subdirectory. So we use the standard monorepo pattern (same as
+  # Symfony / Laravel): mirror sdk-laravel/ to a standalone repo
+  # songhieu/echoproxy-sdk-laravel via .github/workflows/sdk-laravel-mirror.yml,
+  # and Packagist polls THAT repo.
+  #
+  # This job just sanity-checks composer.json validity. Actual publish
+  # is handled by the mirror + Packagist's poll on the mirrored repo.
   packagist:
-    name: packagist / echoproxy/sdk-laravel (validate)
+    name: packagist / composer.json validate
     runs-on: ubuntu-latest
     needs: version
     steps:
@@ -127,8 +131,8 @@ jobs:
         run: composer validate --strict --no-check-publish
       - name: notify
         run: |
-          echo "::notice::Packagist polls this repo for tags. Make sure the package was submitted once at https://packagist.org/packages/submit"
-          echo "::notice::After tag push, see https://packagist.org/packages/echoproxy/sdk-laravel for the new version (may take 1-5 min to appear)"
+          echo "::notice::sdk-laravel/ is mirrored to songhieu/echoproxy-sdk-laravel by sdk-laravel-mirror.yml"
+          echo "::notice::Packagist polls the mirrored repo. See docs/sdk-publishing.md for setup."
 
   # ─── Go → proxy.golang.org ──────────────────────────────────────────────────
   # Same story as Packagist: tag IS the publish. The Go module proxy fetches
