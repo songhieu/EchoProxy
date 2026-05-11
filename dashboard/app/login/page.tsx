@@ -5,6 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoginForm } from "./form";
 
+// Don't pre-render at build time. The page uses Suspense + the form reads
+// search params, so the static prerender produces an empty/error page that
+// gets served from the build-time HTML with x-nextjs-cache=HIT forever.
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">

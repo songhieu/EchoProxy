@@ -3,6 +3,8 @@ import { Zap } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignupForm } from "./form";
 
+export const dynamic = "force-dynamic";
+
 export default function SignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">

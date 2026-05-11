@@ -12,6 +12,11 @@ import { CreateKeyDialog } from "./create-dialog";
 import { RevokeKeyButton } from "./revoke-button";
 import { formatRelative, isRedirectError } from "@/lib/utils";
 
+// Stop Next.js from serving the prerendered build-time HTML (which embeds
+// stale client-bundle URLs and was causing the "deploy didn't change anything"
+// bug — Cloudflare + the framework cache both honor s-maxage=31536000).
+export const dynamic = "force-dynamic";
+
 export default async function KeysPage({ params }: { params: { id: string } }) {
   const session = await getSession();
   let keys: Awaited<ReturnType<typeof listAPIKeys>> = [];
