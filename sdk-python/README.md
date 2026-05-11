@@ -1,11 +1,11 @@
-# echoproxy-sdk
+# echoproxy
 
 Python SDK for the [EchoProxy](../README.md) HTTP observability platform.
 
 ## Install
 
 ```bash
-pip install echoproxy-sdk
+pip install echoproxy
 export ECHOPROXY_API_KEY=sk_live_xxx
 export ECHOPROXY_ENDPOINT=http://localhost:8081
 ```

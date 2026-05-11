@@ -42,7 +42,7 @@ jobs:
 
   # ─── Python → PyPI ──────────────────────────────────────────────────────────
   python:
-    name: pypi / echoproxy-sdk
+    name: pypi / echoproxy
     runs-on: ubuntu-latest
     needs: version
     permissions:
@@ -50,7 +50,7 @@ jobs:
       id-token: write       # for PyPI Trusted Publishers (preferred over API token)
     environment:
       name: pypi
-      url: https://pypi.org/project/echoproxy-sdk/
+      url: https://pypi.org/project/echoproxy/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,7 +117,7 @@ jobs:
   # Packagist requires composer.json at the REPO ROOT — it can't read a
   # subdirectory. So we use the standard monorepo pattern (same as
   # Symfony / Laravel): mirror sdk-laravel/ to a standalone repo
-  # songhieu/echoproxy-sdk-laravel via .github/workflows/sdk-laravel-mirror.yml,
+  # songhieu/echoproxy-laravel via .github/workflows/sdk-laravel-mirror.yml,
   # and Packagist polls THAT repo.
   #
   # This job just sanity-checks composer.json validity. Actual publish
@@ -135,7 +135,7 @@ jobs:
         run: composer validate --strict --no-check-publish
       - name: notify
         run: |
-          echo "::notice::sdk-laravel/ is mirrored to songhieu/echoproxy-sdk-laravel by sdk-laravel-mirror.yml"
+          echo "::notice::sdk-laravel/ is mirrored to songhieu/echoproxy-laravel by sdk-laravel-mirror.yml"
           echo "::notice::Packagist polls the mirrored repo. See docs/sdk-publishing.md for setup."
 
   # ─── Go → proxy.golang.org ──────────────────────────────────────────────────

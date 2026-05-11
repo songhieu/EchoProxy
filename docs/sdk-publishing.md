@@ -34,7 +34,7 @@ All 4 SDKs versioned together. Stripe-style.
 1. Go to https://pypi.org/manage/account/publishing/
 2. Click **Add a new publisher** → **GitHub**
 3. Fill in:
-   - PyPI Project Name: `echoproxy-sdk`
+   - PyPI Project Name: `echoproxy`
    - Owner: `songhieu`
    - Repository name: `EchoProxy`
    - Workflow name: `publish-sdks.yml`
@@ -43,7 +43,7 @@ All 4 SDKs versioned together. Stripe-style.
 
 **Option B — API token (fallback):**
 
-1. https://pypi.org/manage/account/token → Create token, scope to project `echoproxy-sdk`
+1. https://pypi.org/manage/account/token → Create token, scope to project `echoproxy`
 2. GitHub: Settings → Secrets and variables → Actions → New repository secret
 3. Name: `PYPI_API_TOKEN`, value: paste token
 4. Uncomment the `password:` line in `publish-sdks.yml` under the `python` job
@@ -60,7 +60,7 @@ All 4 SDKs versioned together. Stripe-style.
 ```
 
 Alternative if `@echoproxy` is taken: change `package.json` `name` to
-`@songhieu/echoproxy-sdk` or just unscoped `echoproxy-sdk`.
+`@songhieu/echoproxy` or just unscoped `echoproxy`.
 
 **Token:**
 
@@ -84,7 +84,7 @@ Packagist. The mirror is automated via `.github/workflows/sdk-laravel-mirror.yml
 **One-time setup:**
 
 1. **Create empty mirror repo** on GitHub:
-   - Name: `echoproxy-sdk-laravel`
+   - Name: `echoproxy-laravel`
    - Visibility: Public
    - **Do not** initialize with README/license — the mirror replaces history
 
@@ -107,13 +107,13 @@ Packagist. The mirror is automated via `.github/workflows/sdk-laravel-mirror.yml
 
 5. **Submit the MIRROR repo to Packagist** (NOT the monorepo):
    - https://packagist.org/packages/submit
-   - Paste: `https://github.com/songhieu/echoproxy-sdk-laravel`
+   - Paste: `https://github.com/songhieu/echoproxy-laravel`
    - Submit. Now Packagist sees `composer.json` at the root and accepts.
    - Package URL: https://packagist.org/packages/echoproxy/sdk-laravel
 
 6. **(Optional) Webhook for instant updates** instead of 30-min poll:
    - On Packagist package page → Settings → "Set up a service hook on GitHub"
-   - This installs a webhook on the `echoproxy-sdk-laravel` repo (not the monorepo)
+   - This installs a webhook on the `echoproxy-laravel` repo (not the monorepo)
    - Any tag pushed there now refreshes Packagist within seconds
 
 **Per-release:** nothing manual. `git push origin v0.2.0` from the
@@ -158,7 +158,7 @@ within a few minutes:
 
 ```bash
 # PyPI
-pip index versions echoproxy-sdk
+pip index versions echoproxy
 
 # npm
 npm view @echoproxy/sdk versions --json

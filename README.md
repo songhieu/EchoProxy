@@ -7,7 +7,7 @@
 [![CI](https://github.com/songhieu/EchoProxy/actions/workflows/ci.yml/badge.svg)](https://github.com/songhieu/EchoProxy/actions/workflows/ci.yml)
 [![Release](https://github.com/songhieu/EchoProxy/actions/workflows/release.yml/badge.svg)](https://github.com/songhieu/EchoProxy/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/songhieu/EchoProxy?display_name=tag&sort=semver&logo=github&label=release)](https://github.com/songhieu/EchoProxy/releases/latest)
-[![PyPI](https://img.shields.io/pypi/v/echoproxy-sdk?logo=pypi&label=pypi)](https://pypi.org/project/echoproxy-sdk/)
+[![PyPI](https://img.shields.io/pypi/v/echoproxy?logo=pypi&label=pypi)](https://pypi.org/project/echoproxy/)
 [![Packagist](https://img.shields.io/packagist/v/echoproxy/sdk-laravel?logo=packagist&label=packagist)](https://packagist.org/packages/echoproxy/sdk-laravel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8.svg?logo=go)](https://go.dev)
