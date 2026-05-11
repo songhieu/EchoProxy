@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"echoproxy/ingest-api/internal/domain"
-	"echoproxy/ingest-api/internal/usecase"
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/domain"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 // Server bridges the generated EventIngestServer to the use case.

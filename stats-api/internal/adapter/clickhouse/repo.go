@@ -10,7 +10,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 
-	"echoproxy/stats-api/internal/domain"
+	"github.com/songhieu/EchoProxy/stats-api/internal/domain"
 )
 
 type Repo struct{ conn driver.Conn }

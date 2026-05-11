@@ -10,9 +10,9 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 
-	"echoproxy/log-consumer/internal/domain"
-	"echoproxy/log-consumer/internal/usecase"
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/domain"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/usecase"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 // Consumer drains a Kafka topic into the batcher. One consumer per process is

@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // Loader periodically refreshes the API-key cache from Postgres so the hot

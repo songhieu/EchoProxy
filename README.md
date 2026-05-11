@@ -356,6 +356,7 @@ See [`docs/retention.md`](docs/retention.md) for retention tuning.
 | Doc | What |
 |-----|------|
 | [`docs/inbound-vs-outbound.md`](docs/inbound-vs-outbound.md) | Concept + decision guide for inbound (server middleware) vs outbound (proxy / SDK) capture |
+| [`docs/sdk-publishing.md`](docs/sdk-publishing.md) | One tag → publish 4 SDKs to PyPI / npm / Packagist / Go proxy (CI automated) |
 | [`docs/deployment/`](docs/deployment/) | Pick a platform: [docker-compose](docs/deployment/docker-compose.md) (single VM) or [Kubernetes via Helm](docs/deployment/kubernetes.md) |
 | [`docs/retention.md`](docs/retention.md) | Per-project retention, cleanup scheduling, TTL tiers |
 | [`docs/sdk-spec.md`](docs/sdk-spec.md) | Contract every SDK must implement |

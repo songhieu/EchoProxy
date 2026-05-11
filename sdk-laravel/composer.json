@@ -1,8 +1,22 @@
 {
   "name": "echoproxy/sdk-laravel",
-  "description": "Laravel SDK for echoproxy — captures HTTP traffic and ships it to ingest-api.",
+  "description": "Laravel SDK for EchoProxy — captures HTTP traffic and ships it to ingest-api. Server middleware + Guzzle middleware + proxy-mode client.",
   "type": "library",
   "license": "MIT",
+  "homepage": "https://github.com/songhieu/EchoProxy",
+  "keywords": ["observability", "http", "proxy", "apm", "laravel", "guzzle", "logging", "echoproxy"],
+  "authors": [
+    {
+      "name": "songhieu",
+      "email": "songhieu2516@gmail.com",
+      "homepage": "https://github.com/songhieu"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/songhieu/EchoProxy/issues",
+    "source":  "https://github.com/songhieu/EchoProxy/tree/main/sdk-laravel",
+    "docs":    "https://github.com/songhieu/EchoProxy#readme"
+  },
   "require": {
     "php": "^8.1",
     "guzzlehttp/guzzle": "^7.5",
@@ -29,5 +43,6 @@
         "Echoproxy\\Sdk\\EchoproxyServiceProvider"
       ]
     }
-  }
+  },
+  "minimum-stability": "stable"
 }

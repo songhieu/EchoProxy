@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"echoproxy/ingest-api/internal/domain"
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/domain"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 type fakeRepo struct{ m map[string]*domain.APIKey }

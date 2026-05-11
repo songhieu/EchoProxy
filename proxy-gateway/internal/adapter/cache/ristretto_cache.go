@@ -3,7 +3,7 @@ package cache
 import (
 	"github.com/dgraph-io/ristretto"
 
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // RistrettoCache implements domain.APIKeyCache. Read-heavy hot path so we

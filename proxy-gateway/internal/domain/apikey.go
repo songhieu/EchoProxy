@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"echoproxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
 // APIKey is the value object that drives proxy authorization. It is loaded

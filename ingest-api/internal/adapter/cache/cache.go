@@ -3,7 +3,7 @@ package cache
 import (
 	"github.com/dgraph-io/ristretto"
 
-	"echoproxy/ingest-api/internal/domain"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/domain"
 )
 
 type RistrettoCache struct{ c *ristretto.Cache }

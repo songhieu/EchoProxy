@@ -1,4 +1,4 @@
-module echoproxy/auth-api
+module github.com/songhieu/EchoProxy/auth-api
 
 go 1.25.0
 

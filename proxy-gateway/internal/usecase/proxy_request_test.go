@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"testing"
 
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 func TestParseTarget_RejectsLoopback(t *testing.T) {

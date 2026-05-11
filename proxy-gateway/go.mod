@@ -1,4 +1,4 @@
-module echoproxy/proxy-gateway
+module github.com/songhieu/EchoProxy/proxy-gateway
 
 go 1.25.0
 

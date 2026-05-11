@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 
-	"echoproxy/ingest-api/internal/domain"
-	"echoproxy/pkg/event"
-	"echoproxy/pkg/ratelimit"
-	"echoproxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/domain"
+	"github.com/songhieu/EchoProxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/ratelimit"
+	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
 // Ingest is the single entry point for both HTTP and gRPC adapters. It

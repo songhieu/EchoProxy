@@ -461,7 +461,7 @@ const file_event_proto_rawDesc = "" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason2\xa1\x01\n" +
 	"\vEventIngest\x12C\n" +
 	"\x06Ingest\x12\x1b.echoproxy.v1.IngestRequest\x1a\x1c.echoproxy.v1.IngestResponse\x12M\n" +
-	"\fIngestStream\x12\x1b.echoproxy.v1.IngestRequest\x1a\x1c.echoproxy.v1.IngestResponse(\x010\x01B\x1bZ\x19echoproxy/pkg/event;eventb\x06proto3"
+	"\fIngestStream\x12\x1b.echoproxy.v1.IngestRequest\x1a\x1c.echoproxy.v1.IngestResponse(\x010\x01B/Z-github.com/songhieu/EchoProxy/pkg/event;eventb\x06proto3"
 
 var (
 	file_event_proto_rawDescOnce sync.Once

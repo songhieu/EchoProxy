@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 
-	"echoproxy/auth-api/internal/domain"
-	"echoproxy/auth-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/auth-api/internal/domain"
+	"github.com/songhieu/EchoProxy/auth-api/internal/usecase"
 )
 
 type Handler struct {

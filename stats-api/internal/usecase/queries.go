@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"echoproxy/stats-api/internal/domain"
+	"github.com/songhieu/EchoProxy/stats-api/internal/domain"
 )
 
 type Queries struct{ repo domain.Repository }

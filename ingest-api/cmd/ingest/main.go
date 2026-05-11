@@ -12,16 +12,16 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 
-	grpcadapter "echoproxy/ingest-api/internal/adapter/grpc"
-	httpadapter "echoproxy/ingest-api/internal/adapter/http"
-	"echoproxy/ingest-api/internal/adapter/cache"
-	"echoproxy/ingest-api/internal/adapter/kafka"
-	"echoproxy/ingest-api/internal/adapter/postgres"
-	"echoproxy/ingest-api/internal/infra"
-	"echoproxy/ingest-api/internal/usecase"
-	"echoproxy/pkg/event"
-	"echoproxy/pkg/ratelimit"
-	"echoproxy/pkg/redact"
+	grpcadapter "github.com/songhieu/EchoProxy/ingest-api/internal/adapter/grpc"
+	httpadapter "github.com/songhieu/EchoProxy/ingest-api/internal/adapter/http"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/adapter/cache"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/adapter/kafka"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/adapter/postgres"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/infra"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/ratelimit"
+	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
 func main() {

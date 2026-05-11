@@ -11,10 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 
-	"echoproxy/log-consumer/internal/adapter/clickhouse"
-	"echoproxy/log-consumer/internal/adapter/kafka"
-	"echoproxy/log-consumer/internal/infra"
-	"echoproxy/log-consumer/internal/usecase"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/adapter/clickhouse"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/adapter/kafka"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/infra"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/usecase"
 )
 
 func main() {

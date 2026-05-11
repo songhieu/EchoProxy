@@ -47,3 +47,12 @@ sdk-laravel/.phpunit.cache/
 *.pem
 *.key
 secrets/
+
+# Built Go binaries committed by accident
+cleanup/cleanup
+**/cleanup
+!cleanup/
+!cleanup/cmd/
+
+# Claude Code session state
+.claude/scheduled_tasks.lock

@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 // Sink wraps the shared producer to satisfy domain.Sink. The fire-and-forget

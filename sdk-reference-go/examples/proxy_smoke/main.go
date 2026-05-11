@@ -9,7 +9,7 @@ import (
 	"io"
 	"os"
 
-	sid "echoproxy/sdk-reference-go/proxy"
+	sid "github.com/songhieu/EchoProxy/sdk-reference-go/proxy"
 )
 
 func main() {

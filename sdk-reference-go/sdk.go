@@ -21,8 +21,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"echoproxy/pkg/event"
-	"echoproxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
 const Version = "0.1.0"

@@ -4,7 +4,7 @@ syntax = "proto3";
 // Backwards-compatible only. See .claude/skills/echoproxy-event-schema/SKILL.md.
 package echoproxy.v1;
 
-option go_package = "echoproxy/pkg/event;event";
+option go_package = "github.com/songhieu/EchoProxy/pkg/event;event";
 
 message HttpEvent {
   // Identity

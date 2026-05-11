@@ -1,4 +1,4 @@
-module echoproxy/cleanup
+module github.com/songhieu/EchoProxy/cleanup
 
 go 1.25.0
 

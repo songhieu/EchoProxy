@@ -10,10 +10,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	httpadapter "echoproxy/auth-api/internal/adapter/http"
-	"echoproxy/auth-api/internal/adapter/postgres"
-	"echoproxy/auth-api/internal/infra"
-	"echoproxy/auth-api/internal/usecase"
+	httpadapter "github.com/songhieu/EchoProxy/auth-api/internal/adapter/http"
+	"github.com/songhieu/EchoProxy/auth-api/internal/adapter/postgres"
+	"github.com/songhieu/EchoProxy/auth-api/internal/infra"
+	"github.com/songhieu/EchoProxy/auth-api/internal/usecase"
 )
 
 func main() {

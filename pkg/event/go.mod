@@ -1,4 +1,4 @@
-module echoproxy/pkg/event
+module github.com/songhieu/EchoProxy/pkg/event
 
 go 1.25.0
 

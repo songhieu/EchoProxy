@@ -1,4 +1,4 @@
-module echoproxy/ingest-api
+module github.com/songhieu/EchoProxy/ingest-api
 
 go 1.25.0
 

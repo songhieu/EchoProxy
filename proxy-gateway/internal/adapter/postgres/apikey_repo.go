@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"echoproxy/pkg/redact"
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // APIKeyRepo is the Postgres-backed implementation of domain.APIKeyRepository.

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"echoproxy/auth-api/internal/domain"
+	"github.com/songhieu/EchoProxy/auth-api/internal/domain"
 )
 
 type fakeUserRepo struct {

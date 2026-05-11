@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 // Sink ingests one event. Implementations decide how (Kafka producer, etc).

@@ -8,7 +8,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 
-	"echoproxy/log-consumer/internal/domain"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/domain"
 )
 
 // Sink batch-inserts rows into the http_events table using the

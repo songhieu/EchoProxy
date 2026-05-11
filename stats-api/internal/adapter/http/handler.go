@@ -13,10 +13,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
 
-	"echoproxy/stats-api/internal/adapter/postgres"
-	"echoproxy/stats-api/internal/adapter/redis"
-	"echoproxy/stats-api/internal/domain"
-	"echoproxy/stats-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/stats-api/internal/adapter/postgres"
+	"github.com/songhieu/EchoProxy/stats-api/internal/adapter/redis"
+	"github.com/songhieu/EchoProxy/stats-api/internal/domain"
+	"github.com/songhieu/EchoProxy/stats-api/internal/usecase"
 )
 
 type Handler struct {

@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"echoproxy/auth-api/internal/domain"
+	"github.com/songhieu/EchoProxy/auth-api/internal/domain"
 )
 
 type Projects struct{ repo domain.ProjectRepository }

@@ -9,7 +9,7 @@
 //
 // Usage:
 //
-//	import sid "echoproxy/sdk-reference-go/proxy"
+//	import sid "github.com/songhieu/EchoProxy/sdk-reference-go/proxy"
 //
 //	res, err := sid.Get("https://api.example.com/users")
 //	res, err := sid.Post("https://api.example.com/users", "application/json", body)

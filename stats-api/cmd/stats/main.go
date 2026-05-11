@@ -10,12 +10,12 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"echoproxy/stats-api/internal/adapter/clickhouse"
-	httpadapter "echoproxy/stats-api/internal/adapter/http"
-	"echoproxy/stats-api/internal/adapter/postgres"
-	"echoproxy/stats-api/internal/adapter/redis"
-	"echoproxy/stats-api/internal/infra"
-	"echoproxy/stats-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/stats-api/internal/adapter/clickhouse"
+	httpadapter "github.com/songhieu/EchoProxy/stats-api/internal/adapter/http"
+	"github.com/songhieu/EchoProxy/stats-api/internal/adapter/postgres"
+	"github.com/songhieu/EchoProxy/stats-api/internal/adapter/redis"
+	"github.com/songhieu/EchoProxy/stats-api/internal/infra"
+	"github.com/songhieu/EchoProxy/stats-api/internal/usecase"
 )
 
 func main() {

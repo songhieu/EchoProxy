@@ -1,4 +1,4 @@
-module echoproxy/stats-api
+module github.com/songhieu/EchoProxy/stats-api
 
 go 1.25.0
 

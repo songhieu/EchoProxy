@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"echoproxy/log-consumer/internal/domain"
+	"github.com/songhieu/EchoProxy/log-consumer/internal/domain"
 )
 
 // Batcher accumulates rows and flushes when the batch is full or the

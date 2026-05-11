@@ -7,9 +7,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"echoproxy/ingest-api/internal/domain"
-	"echoproxy/ingest-api/internal/usecase"
-	"echoproxy/pkg/event"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/domain"
+	"github.com/songhieu/EchoProxy/ingest-api/internal/usecase"
+	"github.com/songhieu/EchoProxy/pkg/event"
 )
 
 // jsonEvent is the wire shape SDKs emit when using HTTP/JSON. Field names mirror

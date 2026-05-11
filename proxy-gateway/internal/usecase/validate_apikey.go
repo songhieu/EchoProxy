@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // ValidateAPIKey is the hot-path use case that authorizes a single proxy

@@ -1,0 +1,153 @@
+name: Publish SDKs
+
+# Tags `vX.Y.Z` cut from main publish every SDK at the same version. Two
+# split paths:
+#
+#   Python  → PyPI            (twine upload — requires PYPI_API_TOKEN secret)
+#   TS      → npm             (npm publish --provenance — requires NPM_TOKEN secret)
+#   Laravel → Packagist       (no upload — Packagist polls the git tag itself,
+#                              one-time submit at packagist.org/packages/submit)
+#   Go      → proxy.golang.org (no upload — tag IS the publish, the module
+#                               proxy auto-fetches on first `go get`)
+#
+# See docs/sdk-publishing.md for first-time setup of secrets + Packagist.
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 0.2.0). Leave empty to use the tag.'
+        required: false
+
+concurrency:
+  group: publish-sdks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ─── Derive version once, reuse across jobs ─────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.v.outputs.semver }}
+    steps:
+      - id: v
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "semver=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "semver=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          fi
+
+  # ─── Python → PyPI ──────────────────────────────────────────────────────────
+  python:
+    name: pypi / echoproxy-sdk
+    runs-on: ubuntu-latest
+    needs: version
+    permissions:
+      contents: read
+      id-token: write       # for PyPI Trusted Publishers (preferred over API token)
+    environment:
+      name: pypi
+      url: https://pypi.org/project/echoproxy-sdk/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: stamp version into pyproject.toml
+        working-directory: sdk-python
+        run: |
+          sed -i "s/^version = .*/version = \"${{ needs.version.outputs.semver }}\"/" pyproject.toml
+          grep '^version' pyproject.toml
+      - name: build
+        working-directory: sdk-python
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: publish (Trusted Publishers — no token needed)
+        # Falls back to PYPI_API_TOKEN if Trusted Publishers isn't configured.
+        # Set up Trusted Publishers at https://pypi.org/manage/account/publishing/
+        # to drop the long-lived token. See docs/sdk-publishing.md.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk-python/dist/
+          # password: ${{ secrets.PYPI_API_TOKEN }}   # uncomment if not using Trusted Publishers
+
+  # ─── TypeScript → npm ───────────────────────────────────────────────────────
+  npm:
+    name: npm / @echoproxy/sdk
+    runs-on: ubuntu-latest
+    needs: version
+    permissions:
+      contents: read
+      id-token: write       # required for `npm publish --provenance`
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@echoproxy/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+          cache-dependency-path: sdk-ts/pnpm-lock.yaml
+      - name: stamp version into package.json
+        working-directory: sdk-ts
+        run: npm version --no-git-tag-version ${{ needs.version.outputs.semver }}
+      - name: install + build
+        working-directory: sdk-ts
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: publish
+        working-directory: sdk-ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
+
+  # ─── Laravel → Packagist ────────────────────────────────────────────────────
+  # Packagist polls the GitHub repo for new tags automatically once the
+  # package is submitted at packagist.org/packages/submit. The submission is
+  # a one-time manual step; no CI action is required to "publish" a tag.
+  # We just verify composer.json is valid here.
+  packagist:
+    name: packagist / echoproxy/sdk-laravel (validate)
+    runs-on: ubuntu-latest
+    needs: version
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', tools: composer:v2 }
+      - name: composer validate
+        working-directory: sdk-laravel
+        run: composer validate --strict --no-check-publish
+      - name: notify
+        run: |
+          echo "::notice::Packagist polls this repo for tags. Make sure the package was submitted once at https://packagist.org/packages/submit"
+          echo "::notice::After tag push, see https://packagist.org/packages/echoproxy/sdk-laravel for the new version (may take 1-5 min to appear)"
+
+  # ─── Go → proxy.golang.org ──────────────────────────────────────────────────
+  # Same story as Packagist: tag IS the publish. The Go module proxy fetches
+  # on first `go get github.com/songhieu/EchoProxy/sdk-reference-go@<tag>`.
+  # We just verify the module builds cleanly + nudge the proxy to warm cache.
+  go:
+    name: go / sdk-reference-go (warm proxy)
+    runs-on: ubuntu-latest
+    needs: version
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25' }
+      - name: build
+        working-directory: sdk-reference-go
+        run: go build ./...
+      - name: warm proxy.golang.org cache
+        # Trigger the proxy to fetch this version (no-op if module path
+        # doesn't yet match the github URL — see docs/sdk-publishing.md).
+        run: |
+          curl -fsS "https://proxy.golang.org/github.com/songhieu/!echo!proxy/sdk-reference-go/@v/v${{ needs.version.outputs.semver }}.info" || \
+            echo "::notice::Go module proxy hasn't seen this tag yet — first \`go get\` will populate it"

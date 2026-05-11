@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"echoproxy/auth-api/internal/domain"
+	"github.com/songhieu/EchoProxy/auth-api/internal/domain"
 )
 
 func MustConnect(ctx context.Context, dsn string) *pgxpool.Pool {

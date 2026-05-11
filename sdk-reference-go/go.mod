@@ -1,4 +1,4 @@
-module echoproxy/sdk-reference-go
+module github.com/songhieu/EchoProxy/sdk-reference-go
 
 go 1.25.0
 

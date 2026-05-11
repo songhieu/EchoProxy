@@ -6,8 +6,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"echoproxy/pkg/event"
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/pkg/event"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // Sink implements domain.EventSink. It exposes a non-blocking Enqueue that

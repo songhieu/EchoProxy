@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"echoproxy/pkg/ratelimit"
-	"echoproxy/proxy-gateway/internal/domain"
-	"echoproxy/proxy-gateway/internal/usecase"
+	"github.com/songhieu/EchoProxy/pkg/ratelimit"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/usecase"
 )
 
 type ProxyHandler struct {

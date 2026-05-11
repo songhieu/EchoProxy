@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"echoproxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
 var (

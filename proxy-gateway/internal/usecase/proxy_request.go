@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"echoproxy/pkg/event"
-	"echoproxy/pkg/redact"
-	"echoproxy/proxy-gateway/internal/domain"
+	"github.com/songhieu/EchoProxy/pkg/event"
+	"github.com/songhieu/EchoProxy/pkg/redact"
+	"github.com/songhieu/EchoProxy/proxy-gateway/internal/domain"
 )
 
 // Metrics is the minimal interface the use case needs. The real

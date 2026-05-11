@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"echoproxy/auth-api/internal/domain"
+	"github.com/songhieu/EchoProxy/auth-api/internal/domain"
 )
 
 // Auth bundles signup, login and token issuance.

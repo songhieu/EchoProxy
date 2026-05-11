@@ -1,4 +1,4 @@
-module echoproxy/pkg/ratelimit
+module github.com/songhieu/EchoProxy/pkg/ratelimit
 
 go 1.25.0
 

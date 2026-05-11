@@ -11,8 +11,8 @@ help:
 .PHONY: proto-gen
 proto-gen: ## Regenerate Go bindings from api/event.proto
 	protoc \
-		--go_out=. --go_opt=module=echoproxy/pkg/event --go_opt=Mapi/event.proto=. \
-		--go-grpc_out=. --go-grpc_opt=module=echoproxy/pkg/event --go-grpc_opt=Mapi/event.proto=. \
+		--go_out=. --go_opt=module=github.com/songhieu/EchoProxy/pkg/event --go_opt=Mapi/event.proto=. \
+		--go-grpc_out=. --go-grpc_opt=module=github.com/songhieu/EchoProxy/pkg/event --go-grpc_opt=Mapi/event.proto=. \
 		-I api api/event.proto
 	mv event.pb.go pkg/event/event.pb.go 2>/dev/null || true
 	mv event_grpc.pb.go pkg/event/event_grpc.pb.go 2>/dev/null || true

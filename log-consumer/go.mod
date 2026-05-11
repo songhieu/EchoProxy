@@ -1,4 +1,4 @@
-module echoproxy/log-consumer
+module github.com/songhieu/EchoProxy/log-consumer
 
 go 1.25.0
 
