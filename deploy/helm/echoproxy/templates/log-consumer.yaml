@@ -1,0 +1,38 @@
+{{- if .Values.logConsumer.enabled -}}
+{{- $svc := "log-consumer" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  # NOTE: replicas should be ≤ Kafka topic partitions, otherwise extras sit
+  # idle in the consumer group. 2-8 is typical.
+  replicas: {{ .Values.logConsumer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 8 }}
+    spec:
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: consumer
+          image: {{ include "echoproxy.image" (dict "Values" .Values "service" "log-consumer") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - { name: KAFKA_TOPIC, value: {{ .Values.config.kafkaTopic | quote }} }
+            - { name: KAFKA_GROUP, value: "log-consumer" }
+            - { name: BATCH_SIZE, value: "{{ .Values.logConsumer.batchSize }}" }
+            - { name: BATCH_INTERVAL_MS, value: "{{ .Values.logConsumer.batchIntervalMs }}" }
+          envFrom:
+            - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+          resources: {{- toYaml .Values.logConsumer.resources | nindent 12 }}
+{{- end }}

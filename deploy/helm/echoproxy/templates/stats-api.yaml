@@ -1,0 +1,54 @@
+{{- if .Values.statsApi.enabled -}}
+{{- $svc := "stats-api" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  replicas: {{ .Values.statsApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 8 }}
+    spec:
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: stats
+          image: {{ include "echoproxy.image" (dict "Values" .Values "service" "stats-api") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - { name: http, containerPort: 8084 }
+          env:
+            - { name: HTTP_ADDR, value: ":8084" }
+          envFrom:
+            - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources: {{- toYaml .Values.statsApi.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  type: {{ .Values.statsApi.service.type }}
+  selector:
+    {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+  ports:
+    - { name: http, port: {{ .Values.statsApi.service.port }}, targetPort: http }
+{{- end }}

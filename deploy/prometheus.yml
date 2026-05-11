@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: proxy-gateway
+    static_configs: [{targets: ['proxy-gateway:6060']}]
+    metrics_path: /metrics
+
+  - job_name: ingest-api
+    static_configs: [{targets: ['ingest-api:8081']}]
+    metrics_path: /metrics
+
+  - job_name: log-consumer
+    static_configs: [{targets: ['log-consumer:6061']}]
+    metrics_path: /metrics
+
+  - job_name: auth-api
+    static_configs: [{targets: ['auth-api:8083']}]
+    metrics_path: /metrics
+
+  - job_name: stats-api
+    static_configs: [{targets: ['stats-api:8084']}]
+    metrics_path: /metrics

@@ -1,0 +1,28 @@
+{{- if .Values.serviceMonitor.enabled -}}
+# Prometheus operator ServiceMonitor: scrapes /metrics from every Go service.
+# Requires kube-prometheus-stack (or any operator that watches monitoring.coreos.com).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "echoproxy.fullname" . }}
+  labels:
+    {{- include "echoproxy.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: echoproxy
+  namespaceSelector:
+    matchNames: ["{{ .Release.Namespace }}"]
+  endpoints:
+    # proxy admin port has both /metrics and pprof
+    - port: admin
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+    # rest expose /metrics on their main HTTP port
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

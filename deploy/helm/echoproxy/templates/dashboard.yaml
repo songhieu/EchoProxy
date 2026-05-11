@@ -1,0 +1,62 @@
+{{- if .Values.dashboard.enabled -}}
+{{- $svc := "dashboard" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  replicas: {{ .Values.dashboard.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 8 }}
+    spec:
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: dashboard
+          image: {{ include "echoproxy.image" (dict "Values" .Values "service" "dashboard") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Dashboard writes nothing to disk at runtime; keep root read-only.
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - { name: http, containerPort: 3000 }
+          env:
+            - { name: NODE_ENV, value: "production" }
+            - name: AUTH_API_URL
+              value: "http://{{ include "echoproxy.fullname" . }}-auth-api:{{ .Values.authApi.service.port }}"
+            - name: STATS_API_URL
+              value: "http://{{ include "echoproxy.fullname" . }}-stats-api:{{ .Values.statsApi.service.port }}"
+            - name: NEXTAUTH_URL
+              value: {{ .Values.dashboard.publicURL | quote }}
+          envFrom:
+            - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+          resources: {{- toYaml .Values.dashboard.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  type: {{ .Values.dashboard.service.type }}
+  selector:
+    {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+  ports:
+    - { name: http, port: {{ .Values.dashboard.service.port }}, targetPort: http }
+{{- end }}

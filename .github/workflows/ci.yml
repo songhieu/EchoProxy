@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs when a new commit is pushed to the same PR/branch.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Go ──────────────────────────────────────────────────────────────────────
+  # Matrix: every Go module gets its own job so failures are isolated and the
+  # log is grep-able. proto-gen is run once up front; consumers depend on it.
+  go:
+    name: go / ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - pkg/event
+          - pkg/redact
+          - pkg/ratelimit
+          - proxy-gateway
+          - ingest-api
+          - log-consumer
+          - auth-api
+          - stats-api
+          - sdk-reference-go
+          - cleanup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: go vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+      - name: go test
+        working-directory: ${{ matrix.module }}
+        run: go test -race -count=1 ./...
+
+  # ─── TypeScript ──────────────────────────────────────────────────────────────
+  dashboard:
+    name: ts / dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - working-directory: dashboard
+        run: pnpm install --frozen-lockfile
+      - working-directory: dashboard
+        run: pnpm tsc --noEmit
+      - working-directory: dashboard
+        run: pnpm build
+
+  sdk-ts:
+    name: ts / sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: sdk-ts/pnpm-lock.yaml
+      - working-directory: sdk-ts
+        run: pnpm install --frozen-lockfile
+      - working-directory: sdk-ts
+        run: pnpm typecheck
+      - working-directory: sdk-ts
+        run: pnpm test
+
+  # ─── Python ──────────────────────────────────────────────────────────────────
+  sdk-python:
+    name: python / sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: sdk-python/pyproject.toml
+      - working-directory: sdk-python
+        run: pip install -e ".[test]" requests
+      - working-directory: sdk-python
+        run: pytest -q tests/
+
+  # ─── PHP ─────────────────────────────────────────────────────────────────────
+  sdk-laravel:
+    name: php / sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - working-directory: sdk-laravel
+        run: composer install --no-interaction --prefer-dist
+      - working-directory: sdk-laravel
+        run: ./vendor/bin/phpunit --no-coverage
+
+  # ─── Helm ────────────────────────────────────────────────────────────────────
+  helm:
+    name: helm / lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: 'v3.16.0' }
+      - run: helm lint deploy/helm/echoproxy
+      - run: helm template t deploy/helm/echoproxy --set ingress.enabled=true --set serviceMonitor.enabled=true > /tmp/rendered.yaml
+      # Catch obvious YAML structure problems by running a strict client-side parse.
+      - uses: instrumenta/kubeval-action@master
+        with:
+          files: /tmp/rendered.yaml
+        continue-on-error: true   # ServiceMonitor (CRD) not in the upstream schema; don't fail CI on it
+
+  # ─── Proto guard ─────────────────────────────────────────────────────────────
+  # api/event.proto and pkg/event/event.pb.go must stay in sync. Re-run
+  # `make proto-gen` and fail if the working tree is dirty.
+  proto:
+    name: proto / sync check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25' }
+      - name: install protoc
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - name: regenerate
+        run: PATH="$HOME/go/bin:$PATH" make proto-gen
+      - name: diff
+        run: |
+          if ! git diff --quiet -- pkg/event/; then
+            echo "::error::pkg/event is stale — run \`make proto-gen\` and commit"
+            git diff -- pkg/event/
+            exit 1
+          fi

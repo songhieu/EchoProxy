@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+// Public contract between echoproxy platform and every language SDK.
+// Backwards-compatible only. See .claude/skills/echoproxy-event-schema/SKILL.md.
+package echoproxy.v1;
+
+option go_package = "echoproxy/pkg/event;event";
+
+message HttpEvent {
+  // Identity
+  string event_id     = 1;   // ULID, idempotency key
+  int64  timestamp_ns = 2;   // capture time (producer clock)
+  string source       = 3;   // "proxy" | "sdk-laravel" | "sdk-python" | "sdk-go" | ...
+  string sdk_version  = 4;
+  uint64 project_id   = 5;
+  uint64 api_key_id   = 6;
+
+  // HTTP envelope
+  string method   = 10;
+  string scheme   = 11;
+  string host     = 12;
+  string path     = 13;
+  string query    = 14;
+  uint32 status   = 15;
+  uint32 latency_ms = 16;            // total: arrival → response fully sent to client
+  uint32 req_size = 17;
+  uint32 res_size = 18;
+  uint32 upstream_latency_ms = 19;   // upstream RoundTrip duration (request sent → response received)
+  uint32 upstream_ttfb_ms    = 26;   // upstream time-to-first-byte (request sent → first response byte)
+
+  map<string, string> req_headers = 20;
+  map<string, string> res_headers = 21;
+  bytes  req_body = 22;
+  bytes  res_body = 23;
+  bool   req_body_truncated = 24;
+  bool   res_body_truncated = 25;
+
+  // Network / context
+  string client_ip   = 30;
+  string user_agent  = 31;
+  string trace_id    = 32;            // W3C traceparent
+  map<string, string> attributes = 33;
+  string error       = 34;            // non-empty if upstream failed
+  string direction   = 35;            // "inbound" (server middleware) | "outbound" (proxy / client wrapper)
+}
+
+message IngestRequest {
+  repeated HttpEvent events = 1;
+}
+
+message IngestResponse {
+  uint32 accepted = 1;
+  uint32 rejected = 2;
+  string reason   = 3;
+}
+
+service EventIngest {
+  rpc Ingest(IngestRequest) returns (IngestResponse);
+  rpc IngestStream(stream IngestRequest) returns (stream IngestResponse);
+}

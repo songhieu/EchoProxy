@@ -1,0 +1,41 @@
+{{- if .Values.cleanup.enabled -}}
+{{- $svc := "cleanup" }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  schedule: {{ .Values.cleanup.schedule | quote }}
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          securityContext: {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          {{- with .Values.image.pullSecrets }}
+          imagePullSecrets: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: cleanup
+              image: {{ include "echoproxy.image" (dict "Values" .Values "service" "cleanup") }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext: {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              env:
+                - { name: AUDIT_RETENTION_DAYS, value: "{{ .Values.cleanup.auditRetentionDays }}" }
+                # No INTERVAL — one-shot mode, CronJob schedules each fire.
+              envFrom:
+                - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+              resources: {{- toYaml .Values.cleanup.resources | nindent 16 }}
+{{- end }}

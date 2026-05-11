@@ -1,0 +1,184 @@
+name: Release
+
+# Triggers:
+#   push to main         → publish images tagged :latest + :main + :<sha>
+#   push tag vX.Y.Z      → publish images tagged :X.Y.Z + :X.Y + :latest + :<sha>
+#                          AND publish helm chart at the same semver
+#   workflow_dispatch    → manual rebuild of :latest (useful when CI was red)
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+concurrency:
+  # Tag releases serialize per tag; main pushes serialize per branch.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}   # = "songhieu" once the repo is under that user/org
+
+jobs:
+  # ─── Build + push every Go service image + dashboard ─────────────────────────
+  images:
+    name: image / ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write           # required to push to ghcr.io
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: proxy-gateway
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=proxy-gateway
+              BIN=proxy
+          - service: ingest-api
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=ingest-api
+              BIN=ingest
+          - service: log-consumer
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=log-consumer
+              BIN=consumer
+          - service: auth-api
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=auth-api
+              BIN=auth
+          - service: stats-api
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=stats-api
+              BIN=stats
+          - service: cleanup
+            dockerfile: deploy/Dockerfile.go
+            context: .
+            build_args: |
+              SERVICE=cleanup
+              BIN=cleanup
+          - service: dashboard
+            dockerfile: dashboard/Dockerfile
+            context: dashboard
+            build_args: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Smart tag derivation: produces
+      #   on tag v1.2.3 → 1.2.3, 1.2, latest, <sha>
+      #   on main       → main, latest, <sha>
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/echoproxy-${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=branch
+            type=sha,format=short
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.title=echoproxy-${{ matrix.service }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # linux/arm64 in addition to amd64 covers Apple Silicon laptops + Graviton/Ampere nodes.
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          # GHA cache scoped per-service so a change to one service doesn't bust
+          # all others' caches.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          provenance: false   # smaller manifests; flip on if you adopt sigstore
+
+  # ─── Helm chart (OCI) ────────────────────────────────────────────────────────
+  # Published as oci://ghcr.io/<owner>/charts/echoproxy. Consumers:
+  #   helm install r oci://ghcr.io/songhieu/charts/echoproxy --version 0.1.0
+  helm:
+    name: helm / publish
+    runs-on: ubuntu-latest
+    needs: images
+    if: startsWith(github.ref, 'refs/tags/v')   # only on semver tags
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: 'v3.16.0' }
+      - name: derive version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+      - name: stamp Chart.yaml with the release version
+        run: |
+          sed -i "s/^version: .*/version: ${{ steps.ver.outputs.version }}/" deploy/helm/echoproxy/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${{ steps.ver.outputs.version }}\"/" deploy/helm/echoproxy/Chart.yaml
+      - name: package
+        run: helm package deploy/helm/echoproxy --destination /tmp/chart
+      - name: login to ghcr
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: push
+        run: |
+          helm push /tmp/chart/echoproxy-${{ steps.ver.outputs.version }}.tgz \
+            oci://ghcr.io/${{ env.OWNER }}/charts
+
+  # ─── GitHub Release ──────────────────────────────────────────────────────────
+  github-release:
+    name: github release notes
+    runs-on: ubuntu-latest
+    needs: [images, helm]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Container images:
+
+            ```
+            ghcr.io/${{ env.OWNER }}/echoproxy-proxy-gateway:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-ingest-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-log-consumer:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-auth-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-stats-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-cleanup:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/echoproxy-dashboard:${{ github.ref_name }}
+            ```
+
+            Helm chart:
+
+            ```bash
+            helm install echoproxy oci://ghcr.io/${{ env.OWNER }}/charts/echoproxy \
+              --version ${{ github.ref_name }}
+            ```

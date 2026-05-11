@@ -1,0 +1,55 @@
+EchoProxy {{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+──────────────────────────────────────────────────────────────────────────────
+1. Verify pods are healthy:
+
+   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/part-of=echoproxy
+
+2. Apply database migrations (one-shot):
+
+   # Postgres
+   kubectl -n {{ .Release.Namespace }} exec -i <postgres-pod> -- \
+     psql -U <user> -d <db> < migrations/postgres/001_init.sql
+   # ...repeat for every numbered file under migrations/postgres/
+
+   # ClickHouse
+   kubectl -n {{ .Release.Namespace }} exec -i <clickhouse-pod> -- \
+     clickhouse-client --multiquery < migrations/clickhouse/001_init.sql
+   # ...repeat for every numbered file under migrations/clickhouse/
+
+   (Or wrap them in a Job — see docs/deployment/kubernetes.md)
+
+{{ if .Values.ingress.enabled -}}
+3. Dashboard URL: https://{{ .Values.ingress.hosts.dashboard.host }}
+   Proxy URL:     https://{{ .Values.ingress.hosts.proxy.host }}
+{{- else -}}
+3. Port-forward to reach services (no ingress configured):
+
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "echoproxy.fullname" . }}-dashboard 3000:{{ .Values.dashboard.service.port }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "echoproxy.fullname" . }}-proxy-gateway 8080:{{ .Values.proxyGateway.service.port }}
+
+   Open http://localhost:3000
+{{- end }}
+
+4. Sign up at the dashboard, create a project, copy your first API key, then:
+
+   curl -H "X-Echo-Key: $KEY" \
+        -H "X-Echo-Target: https://api.example.com" \
+        https://{{ if .Values.ingress.enabled }}{{ .Values.ingress.hosts.proxy.host }}{{ else }}localhost:8080{{ end }}/health
+
+──────────────────────────────────────────────────────────────────────────────
+Heads-up:
+{{ if eq .Values.secrets.jwtSecret "CHANGE_ME_MINIMUM_32_CHARACTERS_FOR_PRODUCTION" -}}
+  ⚠️  jwtSecret is still the default. Set --set secrets.jwtSecret="<64 random bytes>".
+{{- end }}
+{{ if eq .Values.dashboard.nextauthSecret "CHANGE_ME_MINIMUM_32_CHARACTERS_FOR_PRODUCTION" -}}
+  ⚠️  dashboard.nextauthSecret is still the default. Set --set dashboard.nextauthSecret="<random>".
+{{- end }}
+  • Stateful infra (Kafka / ClickHouse / Postgres / Redis) is bring-your-own.
+    This chart does NOT install them — point the DSNs at managed instances
+    (Aiven, RDS, ClickHouse Cloud, Upstash...) or run them as separate
+    releases via the official Bitnami / company charts.
+  • Cleanup CronJob runs nightly ({{ .Values.cleanup.schedule }} UTC) — enforces
+    per-project retention by issuing async DELETE mutations on ClickHouse.
+    See docs/retention.md for the policy.
+──────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,49 @@
+# Build artifacts
+bin/
+dist/
+*.test
+*.out
+*.prof
+*.pprof
+coverage.txt
+
+# Go
+vendor/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+next-env.d.ts
+
+# Docker volumes
+.data/
+
+# Bench output
+proxy-gateway/bench/results/
+
+# Python SDK
+sdk-python/.venv-sdk-smoke/
+sdk-python/*.egg-info/
+__pycache__/
+.pytest_cache/
+
+# PHP / Composer
+sdk-laravel/vendor/
+sdk-laravel/.phpunit.cache/
+
+# Secrets
+*.pem
+*.key
+secrets/

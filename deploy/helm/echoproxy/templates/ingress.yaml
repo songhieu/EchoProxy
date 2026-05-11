@@ -1,0 +1,96 @@
+{{- if .Values.ingress.enabled -}}
+{{- $name := include "echoproxy.fullname" . -}}
+# Proxy ingress — public traffic entrypoint. Apps point here with
+# X-Echo-Key + X-Echo-Target headers.
+{{- if .Values.ingress.hosts.proxy }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}-proxy
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" "proxy-gateway") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.hosts.proxy.tls }}
+  tls:
+    - hosts: [{{ .Values.ingress.hosts.proxy.host | quote }}]
+      secretName: {{ $name }}-proxy-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.proxy.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}-proxy-gateway
+                port:
+                  name: http
+{{- end }}
+{{- if .Values.ingress.hosts.dashboard }}
+---
+# Dashboard ingress — humans.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}-dashboard
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" "dashboard") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.hosts.dashboard.tls }}
+  tls:
+    - hosts: [{{ .Values.ingress.hosts.dashboard.host | quote }}]
+      secretName: {{ $name }}-dashboard-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.dashboard.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}-dashboard
+                port:
+                  name: http
+{{- end }}
+{{- if .Values.ingress.ingestApi.enabled }}
+---
+# Ingest API ingress — only enable if SDKs ingest from outside the cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}-ingest-api
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" "ingest-api") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.ingestApi.tls }}
+  tls:
+    - hosts: [{{ .Values.ingress.ingestApi.host | quote }}]
+      secretName: {{ $name }}-ingest-api-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.ingestApi.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}-ingest-api
+                port:
+                  name: http
+{{- end }}
+{{- end }}

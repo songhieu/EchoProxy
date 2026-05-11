@@ -1,0 +1,18 @@
+apiVersion: v2
+name: echoproxy
+description: Self-hosted HTTP observability platform — proxy + SDK ingestion, ClickHouse storage, Next.js dashboard
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/songhieu/EchoProxy
+sources:
+  - https://github.com/songhieu/EchoProxy
+maintainers:
+  - name: songhieu
+keywords:
+  - observability
+  - http
+  - proxy
+  - clickhouse
+  - apm
+icon: https://raw.githubusercontent.com/songhieu/EchoProxy/main/.github/logo.png

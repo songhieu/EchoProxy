@@ -1,0 +1,61 @@
+{{- if .Values.ingestApi.enabled -}}
+{{- $svc := "ingest-api" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  replicas: {{ .Values.ingestApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 8 }}
+    spec:
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ingest
+          image: {{ include "echoproxy.image" (dict "Values" .Values "service" "ingest-api") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - { name: http, containerPort: 8081 }
+            - { name: grpc, containerPort: 8082 }
+          env:
+            - { name: HTTP_ADDR, value: ":8081" }
+            - { name: GRPC_ADDR, value: ":8082" }
+            - { name: KAFKA_TOPIC, value: {{ .Values.config.kafkaTopic | quote }} }
+          envFrom:
+            - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources: {{- toYaml .Values.ingestApi.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  type: {{ .Values.ingestApi.service.type }}
+  selector:
+    {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+  ports:
+    - { name: http, port: {{ .Values.ingestApi.service.httpPort }}, targetPort: http }
+    - { name: grpc, port: {{ .Values.ingestApi.service.grpcPort }}, targetPort: grpc }
+{{- end }}

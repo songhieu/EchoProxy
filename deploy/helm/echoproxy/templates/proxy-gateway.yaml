@@ -1,0 +1,121 @@
+{{- if .Values.proxyGateway.enabled -}}
+{{- $svc := "proxy-gateway" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  replicas: {{ .Values.proxyGateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.proxyGateway.service.adminPort }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: proxy
+          image: {{ include "echoproxy.image" (dict "Values" .Values "service" "proxy-gateway") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: admin
+              containerPort: {{ .Values.proxyGateway.service.adminPort }}
+          env:
+            - name: LISTEN_ADDR
+              value: ":8080"
+            - name: ADMIN_ADDR
+              value: ":{{ .Values.proxyGateway.service.adminPort }}"
+            - name: KAFKA_TOPIC
+              value: {{ .Values.config.kafkaTopic | quote }}
+            - name: BODY_CAP_BYTES
+              value: "{{ .Values.config.bodyCapBytes }}"
+            - name: EVENT_CHAN_SIZE
+              value: "{{ .Values.config.eventChanSize }}"
+            - name: APIKEY_REFRESH_SECONDS
+              value: "{{ .Values.config.apiKeyRefreshSeconds }}"
+            - name: ALLOW_PRIVATE_TARGETS
+              value: "{{ .Values.config.allowPrivateTargets }}"
+          envFrom:
+            - secretRef:
+                name: {{ include "echoproxy.secretName" . }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.proxyGateway.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  type: {{ .Values.proxyGateway.service.type }}
+  selector:
+    {{- include "echoproxy.componentSelector" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.proxyGateway.service.port }}
+      targetPort: http
+    - name: admin
+      port: {{ .Values.proxyGateway.service.adminPort }}
+      targetPort: admin
+{{- if .Values.proxyGateway.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  labels:
+    {{- include "echoproxy.componentLabels" (dict "Chart" .Chart "Release" .Release "component" $svc) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "echoproxy.fullname" . }}-{{ $svc }}
+  minReplicas: {{ .Values.proxyGateway.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.proxyGateway.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.proxyGateway.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- end }}

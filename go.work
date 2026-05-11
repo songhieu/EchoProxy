@@ -1,0 +1,14 @@
+go 1.25.0
+
+use (
+	./pkg/event
+	./pkg/redact
+	./pkg/ratelimit
+	./proxy-gateway
+	./log-consumer
+	./auth-api
+	./ingest-api
+	./stats-api
+	./sdk-reference-go
+	./cleanup
+)

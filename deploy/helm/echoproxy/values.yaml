@@ -1,0 +1,159 @@
+# Default values for echoproxy. Override with `helm install ... --set` or a
+# values file. Sized for a small-to-mid production stack (~10-100M req/day).
+# Above that, scale proxy replicas, increase Kafka partitions, and shard
+# ClickHouse.
+
+# ─── Image ────────────────────────────────────────────────────────────────────
+# Build with `make build-images` and push to your registry, then point this
+# at it. tag should match the git SHA or release.
+image:
+  registry: ghcr.io
+  owner: songhieu
+  tag: latest
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# ─── Infra DSNs ───────────────────────────────────────────────────────────────
+# Stateful infra (Kafka / ClickHouse / Postgres / Redis) is intentionally
+# bring-your-own. Use Aiven / Confluent Cloud / ClickHouse Cloud / RDS / etc.
+# for production, or install the official Bitnami charts as separate releases.
+# These values populate a Secret consumed by every service.
+secrets:
+  kafkaBrokers: "kafka:9092"                    # comma-separated
+  clickhouseDSN: "clickhouse://echoproxy:CHANGE_ME@clickhouse:9000/echoproxy"
+  postgresDSN:   "postgres://echoproxy:CHANGE_ME@postgres:5432/echoproxy?sslmode=disable"
+  redisAddr:     "redis:6379"
+  jwtSecret:     "CHANGE_ME_MINIMUM_32_CHARACTERS_FOR_PRODUCTION"
+  # If you'd rather wire your own Secret (sealed-secrets, external-secrets-operator):
+  #   existingSecret: my-echoproxy-secrets
+  # Then the keys above are ignored.
+  existingSecret: ""
+
+# ─── Shared config ────────────────────────────────────────────────────────────
+config:
+  kafkaTopic: "http_events"
+  bodyCapBytes: 65536
+  eventChanSize: 100000
+  apiKeyRefreshSeconds: 10
+  allowPrivateTargets: false                    # set true only for in-cluster targets
+
+# ─── Service deployments ──────────────────────────────────────────────────────
+proxyGateway:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests: { cpu: "200m", memory: "256Mi" }
+    limits:   { cpu: "2",    memory: "1Gi"   }
+  service:
+    type: ClusterIP
+    port: 8080
+    adminPort: 6060
+  autoscaling:
+    enabled: false
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+ingestApi:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "1",    memory: "512Mi" }
+  service:
+    type: ClusterIP
+    httpPort: 8081
+    grpcPort: 8082
+
+logConsumer:
+  enabled: true
+  replicaCount: 2                                # must be ≤ Kafka partitions
+  resources:
+    requests: { cpu: "200m", memory: "256Mi" }
+    limits:   { cpu: "2",    memory: "1Gi"   }
+  batchSize: 5000
+  batchIntervalMs: 1000
+
+authApi:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests: { cpu: "50m",  memory: "64Mi"  }
+    limits:   { cpu: "500m", memory: "256Mi" }
+  service:
+    type: ClusterIP
+    port: 8083
+
+statsApi:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "1",    memory: "512Mi" }
+  service:
+    type: ClusterIP
+    port: 8084
+
+dashboard:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits:   { cpu: "1",    memory: "1Gi"   }
+  service:
+    type: ClusterIP
+    port: 3000
+  publicURL: "https://echoproxy.example.com"
+  nextauthSecret: "CHANGE_ME_MINIMUM_32_CHARACTERS_FOR_PRODUCTION"
+
+cleanup:
+  enabled: true
+  schedule: "17 3 * * *"                         # 03:17 UTC daily
+  auditRetentionDays: 90
+  resources:
+    requests: { cpu: "50m",  memory: "64Mi"  }
+    limits:   { cpu: "500m", memory: "256Mi" }
+
+# ─── Ingress ──────────────────────────────────────────────────────────────────
+# Two ingress hosts: proxy (public traffic) + dashboard (humans).
+# auth/stats/ingest are cluster-internal unless you expose them too.
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    proxy:
+      host: "proxy.echoproxy.example.com"
+      tls: true
+    dashboard:
+      host: "echoproxy.example.com"
+      tls: true
+  ingestApi:
+    enabled: false                                # set true if SDKs ingest cross-cluster
+    host: "ingest.echoproxy.example.com"
+    tls: true
+
+# ─── Pod-level defaults ───────────────────────────────────────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ─── ServiceMonitor (Prometheus operator) ─────────────────────────────────────
+# Enable if kube-prometheus-stack is installed. Each Go service exposes
+# /metrics on its admin port (proxy: 6060, others: same as HTTP).
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  labels: {}
