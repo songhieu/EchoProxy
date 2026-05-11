@@ -75,10 +75,14 @@ jobs:
           # password: ${{ secrets.PYPI_API_TOKEN }}   # uncomment if not using Trusted Publishers
 
   # ─── TypeScript → npm ───────────────────────────────────────────────────────
+  # Auto-enables once `NPM_TOKEN` secret is set (and the @echoproxy org is
+  # reserved on npmjs.com). Until then this job is skipped so a tag push
+  # doesn't fail just because npm publish isn't configured yet.
   npm:
     name: npm / @echoproxy/sdk
     runs-on: ubuntu-latest
     needs: version
+    if: ${{ secrets.NPM_TOKEN != '' }}
     permissions:
       contents: read
       id-token: write       # required for `npm publish --provenance`

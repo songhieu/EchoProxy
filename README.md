@@ -6,6 +6,9 @@
 
 [![CI](https://github.com/songhieu/EchoProxy/actions/workflows/ci.yml/badge.svg)](https://github.com/songhieu/EchoProxy/actions/workflows/ci.yml)
 [![Release](https://github.com/songhieu/EchoProxy/actions/workflows/release.yml/badge.svg)](https://github.com/songhieu/EchoProxy/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/songhieu/EchoProxy?display_name=tag&sort=semver&logo=github&label=release)](https://github.com/songhieu/EchoProxy/releases/latest)
+[![PyPI](https://img.shields.io/pypi/v/echoproxy-sdk?logo=pypi&label=pypi)](https://pypi.org/project/echoproxy-sdk/)
+[![Packagist](https://img.shields.io/packagist/v/echoproxy/sdk-laravel?logo=packagist&label=packagist)](https://packagist.org/packages/echoproxy/sdk-laravel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8.svg?logo=go)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg?logo=nextdotjs)](https://nextjs.org)
@@ -434,7 +437,7 @@ Pull the chart + images straight from GitHub Container Registry:
 
 ```bash
 helm install echoproxy oci://ghcr.io/songhieu/charts/echoproxy \
-  --version 0.1.0 \
+  --version 0.2.0 \
   --namespace echoproxy --create-namespace \
   -f my-values.yaml
 ```
