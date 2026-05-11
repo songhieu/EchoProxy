@@ -42,4 +42,10 @@ type Row struct {
 	TraceID       string
 	Attributes    map[string]string
 	Error         string
+
+	// Streaming. Zero values = not a stream.
+	IsStream           uint8
+	StreamChunkCount   uint32
+	StreamDurationMs   uint32
+	StreamIdleTimeout  uint8
 }

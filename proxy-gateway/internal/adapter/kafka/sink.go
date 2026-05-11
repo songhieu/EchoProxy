@@ -107,5 +107,10 @@ func toProto(p domain.EventPayload) *event.HttpEvent {
 		TraceId:          p.TraceID,
 		Error:            p.Error,
 		Direction:        p.Direction,
+
+		IsStream:          p.IsStream,
+		StreamChunkCount:  p.StreamChunkCount,
+		StreamDurationMs:  p.StreamDurationMs,
+		StreamIdleTimeout: p.StreamIdleTimeout,
 	}
 }

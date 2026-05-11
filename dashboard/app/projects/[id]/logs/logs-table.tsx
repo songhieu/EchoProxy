@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogDetailSheet } from "@/components/log-detail-sheet";
-import { DirectionBadge, MethodBadge, StatusBadge } from "@/components/status-badge";
+import { DirectionBadge, MethodBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LogEvent } from "@/lib/api/types";
@@ -25,6 +25,7 @@ export function LogsTable({ projectId, logs }: { projectId: string; logs: LogEve
                 <TableHead>Method</TableHead>
                 <TableHead>Host + path</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead title="Streaming responses (SSE / gRPC / chunked)">Stream</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right" title="Upstream RoundTrip">Upstream</TableHead>
                 <TableHead className="text-right" title="Time-to-first-byte from upstream">TTFB</TableHead>
@@ -61,6 +62,17 @@ export function LogsTable({ projectId, logs }: { projectId: string; logs: LogEve
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={l.status} />
+                  </TableCell>
+                  <TableCell>
+                    {l.is_stream ? (
+                      <StreamBadge
+                        isStream
+                        idleTimeout={l.stream_idle_timeout}
+                        chunkCount={l.stream_chunk_count}
+                      />
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className={cn("text-right font-mono text-xs", l.latency_ms > 1000 && "text-destructive")}>
                     {l.latency_ms} ms

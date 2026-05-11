@@ -56,6 +56,10 @@ export type LogEvent = {
   user_agent: string;
   trace_id: string;
   error?: string;
+  is_stream?: boolean;
+  stream_chunk_count?: number;
+  stream_duration_ms?: number;
+  stream_idle_timeout?: boolean;
 };
 
 export type MinuteMetric = {

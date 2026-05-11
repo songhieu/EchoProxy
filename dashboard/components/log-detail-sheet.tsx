@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
-import { DirectionBadge, MethodBadge, StatusBadge } from "@/components/status-badge";
+import { DirectionBadge, MethodBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
 import { formatBytes } from "@/lib/utils";
 import type { LogEvent } from "@/lib/api/types";
 
@@ -67,6 +67,13 @@ export function LogDetailSheet({
                 {event.host}
                 {event.path}
               </code>
+              {event.is_stream && (
+                <StreamBadge
+                  isStream
+                  idleTimeout={event.stream_idle_timeout}
+                  chunkCount={event.stream_chunk_count}
+                />
+              )}
               <Badge variant="outline" className="font-mono text-[10px]">
                 {event.event_id.slice(0, 8)}
               </Badge>
@@ -120,6 +127,48 @@ export function LogDetailSheet({
                 ttfb={event.upstream_ttfb_ms}
               />
             </div>
+
+            {event.is_stream && (
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Stream details
+                  </div>
+                  <StreamBadge
+                    isStream
+                    idleTimeout={event.stream_idle_timeout}
+                    chunkCount={event.stream_chunk_count}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <Stat
+                    label="Chunks flushed"
+                    value={(event.stream_chunk_count ?? 0).toLocaleString()}
+                  />
+                  <Stat
+                    label="Stream duration"
+                    value={`${event.stream_duration_ms ?? 0} ms`}
+                  />
+                  <Stat
+                    label="Idle timeout"
+                    value={
+                      event.stream_idle_timeout ? (
+                        <span className="text-destructive">Triggered</span>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )
+                    }
+                  />
+                </div>
+                {event.stream_idle_timeout && (
+                  <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+                    The proxy idle-timeout watchdog cancelled this stream because
+                    the upstream stopped sending bytes for longer than the
+                    configured threshold (<code className="font-mono">STREAM_IDLE_TIMEOUT_SECONDS</code>).
+                  </div>
+                )}
+              </div>
+            )}
 
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-4">

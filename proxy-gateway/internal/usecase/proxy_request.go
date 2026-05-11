@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/songhieu/EchoProxy/pkg/event"
@@ -24,6 +26,9 @@ type Metrics interface {
 	ObserveLatency(method string, statusClass string, d time.Duration)
 	IncDropped()
 	IncTruncated(side string)
+	IncStream()
+	IncStreamIdleTimeout()
+	ObserveStreamChunks(n uint32)
 }
 
 // ProxyRequest forwards a request to the upstream described by X-Echo-Target,
@@ -31,15 +36,21 @@ type Metrics interface {
 // event for the Kafka pipeline. The hot path performs no blocking I/O beyond
 // the upstream RoundTrip.
 type ProxyRequest struct {
-	transport       *http.Transport
-	sink            domain.EventSink
-	bufPool         *sync.Pool
-	bodyCap         int
-	metrics         Metrics
-	defaultRedactor *redact.Redactor
+	transport         *http.Transport
+	sink              domain.EventSink
+	bufPool           *sync.Pool
+	bodyCap           int
+	metrics           Metrics
+	defaultRedactor   *redact.Redactor
+	streamIdleTimeout time.Duration
 }
 
-func NewProxyRequest(transport *http.Transport, sink domain.EventSink, bodyCap int, m Metrics, redactor *redact.Redactor) *ProxyRequest {
+// NewProxyRequest constructs a ProxyRequest. streamIdleTimeout is the
+// inactivity threshold for streaming responses: if no upstream bytes arrive
+// for this long after headers, the watchdog cancels the connection and
+// flags the event with stream_idle_timeout=true. Pass 0 to disable the
+// watchdog (the request still ends when the client/upstream context does).
+func NewProxyRequest(transport *http.Transport, sink domain.EventSink, bodyCap int, m Metrics, redactor *redact.Redactor, streamIdleTimeout time.Duration) *ProxyRequest {
 	if redactor == nil {
 		redactor = redact.New(redact.Rules{})
 	}
@@ -50,8 +61,9 @@ func NewProxyRequest(transport *http.Transport, sink domain.EventSink, bodyCap i
 		bufPool: &sync.Pool{
 			New: func() any { return bytes.NewBuffer(make([]byte, 0, 8192)) },
 		},
-		metrics:         m,
-		defaultRedactor: redactor,
+		metrics:           m,
+		defaultRedactor:   redactor,
+		streamIdleTimeout: streamIdleTimeout,
 	}
 }
 
@@ -84,10 +96,16 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	outURL.Path = singleJoiningSlash(target.Path, r.URL.Path)
 	outURL.RawQuery = r.URL.RawQuery
 
-	outReq, err := http.NewRequestWithContext(r.Context(), r.Method, outURL.String(), bodyForUpstream)
+	// Derive a cancellable context so the idle-timeout watchdog can abort
+	// the upstream connection if a stream stalls. The cancel also runs at
+	// the end of the handler to guarantee no goroutine leak.
+	upstreamCtx, cancelUpstream := context.WithCancel(r.Context())
+	defer cancelUpstream()
+
+	outReq, err := http.NewRequestWithContext(upstreamCtx, r.Method, outURL.String(), bodyForUpstream)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
-		uc.emit(r, key, target, http.StatusBadRequest, start, time.Since(start), 0, 0, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error())
+		uc.emit(r, key, target, http.StatusBadRequest, start, time.Since(start), 0, 0, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error(), streamInfo{})
 		return
 	}
 	copyHeaders(outReq.Header, r.Header)
@@ -98,7 +116,7 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	// httptrace captures the first byte of the upstream response so we can
 	// expose TTFB separately from total upstream latency.
 	var (
-		firstByteAt time.Time
+		firstByteAt  time.Time
 		ttfbCaptured bool
 	)
 	trace := &httptrace.ClientTrace{
@@ -120,7 +138,7 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	}
 	if err != nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
-		uc.emit(r, key, target, http.StatusBadGateway, start, time.Since(start), upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error())
+		uc.emit(r, key, target, http.StatusBadGateway, start, time.Since(start), upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error(), streamInfo{})
 		return
 	}
 	defer resp.Body.Close()
@@ -129,8 +147,27 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	resContentType := resp.Header.Get("Content-Type")
 	copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	mw := io.MultiWriter(w, cappedRes)
-	_, _ = io.Copy(mw, resp.Body)
+
+	// Stream detection must happen *after* the response headers arrive but
+	// before we start copying the body — that is where we decide whether to
+	// flush every chunk and arm the idle watchdog.
+	stream := streamInfo{isStream: isStreaming(resp)}
+	var copyStart time.Time
+	if stream.isStream {
+		copyStart = time.Now()
+		uc.metrics.IncStream()
+		flusher, _ := w.(http.Flusher)
+		stream = uc.streamCopy(upstreamCtx, cancelUpstream, w, flusher, resp.Body, cappedRes)
+		stream.isStream = true
+		stream.durationMs = uint32(time.Since(copyStart).Milliseconds())
+		uc.metrics.ObserveStreamChunks(stream.chunkCount)
+		if stream.idleTimeout {
+			uc.metrics.IncStreamIdleTimeout()
+		}
+	} else {
+		mw := io.MultiWriter(w, cappedRes)
+		_, _ = io.Copy(mw, resp.Body)
+	}
 
 	d := time.Since(start)
 	uc.metrics.ObserveLatency(r.Method, statusClass(resp.StatusCode), d)
@@ -141,12 +178,107 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 		uc.metrics.IncTruncated("res")
 	}
 
-	uc.emit(r, key, target, resp.StatusCode, start, d, upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, cappedRes.truncated, resHeaders, resContentType, "")
+	uc.emit(r, key, target, resp.StatusCode, start, d, upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, cappedRes.truncated, resHeaders, resContentType, "", stream)
+}
+
+// streamInfo carries observations gathered during a streaming copy.
+type streamInfo struct {
+	isStream    bool
+	chunkCount  uint32
+	durationMs  uint32
+	idleTimeout bool
+}
+
+// isStreaming returns true when the response should be treated as a stream:
+// SSE, gRPC, chunked transfer encoding, or a 200 with unknown length. These
+// responses need per-chunk flush so the client sees data in real time.
+func isStreaming(resp *http.Response) bool {
+	ct := resp.Header.Get("Content-Type")
+	switch {
+	case strings.HasPrefix(ct, "text/event-stream"):
+		return true
+	case strings.HasPrefix(ct, "application/grpc"):
+		return true
+	}
+	for _, te := range resp.TransferEncoding {
+		if strings.EqualFold(te, "chunked") {
+			return true
+		}
+	}
+	// Unknown length on a 200 is a strong signal of a stream (e.g. SSE
+	// proxies that forget Content-Type, or NDJSON endpoints).
+	if resp.ContentLength < 0 && resp.StatusCode == http.StatusOK {
+		return true
+	}
+	return false
+}
+
+// streamCopy reads the upstream body chunk-by-chunk, writes each chunk to
+// the client + the bounded capture buffer, and flushes immediately. It
+// also arms an idle-timeout watchdog: if no upstream bytes arrive for
+// uc.streamIdleTimeout, it cancels the upstream context — which closes
+// resp.Body and breaks the Read loop with a non-nil error.
+func (uc *ProxyRequest) streamCopy(ctx context.Context, cancel context.CancelFunc, w io.Writer, flusher http.Flusher, body io.Reader, captured *cappedWriter) streamInfo {
+	var info streamInfo
+	var lastActivity atomic.Int64
+	lastActivity.Store(time.Now().UnixNano())
+
+	// Watchdog goroutine. Tick at idle/4 so we react within a quarter of
+	// the budget after the upstream stalls. A 0 idle timeout disables it.
+	if uc.streamIdleTimeout > 0 {
+		idleNs := uc.streamIdleTimeout.Nanoseconds()
+		tickEvery := uc.streamIdleTimeout / 4
+		if tickEvery < 250*time.Millisecond {
+			tickEvery = 250 * time.Millisecond
+		}
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			t := time.NewTicker(tickEvery)
+			defer t.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-ctx.Done():
+					return
+				case now := <-t.C:
+					if now.UnixNano()-lastActivity.Load() >= idleNs {
+						info.idleTimeout = true
+						cancel()
+						return
+					}
+				}
+			}
+		}()
+	}
+
+	// 32 KiB matches io.Copy's default — large enough to amortize syscall
+	// overhead, small enough not to bloat the per-request footprint.
+	buf := make([]byte, 32*1024)
+	for {
+		n, rerr := body.Read(buf)
+		if n > 0 {
+			lastActivity.Store(time.Now().UnixNano())
+			info.chunkCount++
+			if _, werr := w.Write(buf[:n]); werr != nil {
+				return info
+			}
+			_, _ = captured.Write(buf[:n])
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if rerr != nil {
+			return info
+		}
+	}
 }
 
 func (uc *ProxyRequest) emit(r *http.Request, key *domain.APIKey, target *url.URL, status int,
 	arrival time.Time, total, upstream, ttfb time.Duration,
-	reqBuf, resBuf *bytes.Buffer, reqTrunc, resTrunc bool, resHeaders map[string]string, resContentType, errStr string) {
+	reqBuf, resBuf *bytes.Buffer, reqTrunc, resTrunc bool, resHeaders map[string]string, resContentType, errStr string,
+	stream streamInfo) {
 	red := key.Redactor
 	if red == nil {
 		red = uc.defaultRedactor
@@ -179,6 +311,11 @@ func (uc *ProxyRequest) emit(r *http.Request, key *domain.APIKey, target *url.UR
 		TraceID:          r.Header.Get("traceparent"),
 		Error:            errStr,
 		Direction:        "outbound",
+
+		IsStream:          stream.isStream,
+		StreamChunkCount:  stream.chunkCount,
+		StreamDurationMs:  stream.durationMs,
+		StreamIdleTimeout: stream.idleTimeout,
 	}
 	// Sink is responsible for non-blocking enqueue + drop counting.
 	uc.sink.Enqueue(r.Context(), payload)

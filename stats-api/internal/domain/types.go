@@ -32,6 +32,11 @@ type LogEvent struct {
 	UserAgent     string            `json:"user_agent"`
 	TraceID       string            `json:"trace_id"`
 	Error         string            `json:"error,omitempty"`
+
+	IsStream          bool   `json:"is_stream"`
+	StreamChunkCount  uint32 `json:"stream_chunk_count"`
+	StreamDurationMs  uint32 `json:"stream_duration_ms"`
+	StreamIdleTimeout bool   `json:"stream_idle_timeout"`
 }
 
 type LogsFilter struct {
@@ -43,6 +48,7 @@ type LogsFilter struct {
 	Status    uint16
 	PathLike  string
 	Direction string // "inbound" | "outbound" | "" (any)
+	IsStream  *bool  // nil = any; true = streams only; false = non-streams
 	Limit     int
 	Offset    int
 }

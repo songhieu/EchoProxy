@@ -12,12 +12,15 @@ import (
 // public methods are intentionally cheap (no map lookups) for the proxy
 // hot path.
 type Recorder struct {
-	requestDuration *prometheus.HistogramVec
-	dropped         prometheus.Counter
-	truncated       *prometheus.CounterVec
-	cacheHit        prometheus.Counter
-	cacheMiss       prometheus.Counter
-	droppedTotal    *uint64
+	requestDuration  *prometheus.HistogramVec
+	dropped          prometheus.Counter
+	truncated        *prometheus.CounterVec
+	cacheHit         prometheus.Counter
+	cacheMiss        prometheus.Counter
+	streamRequests   prometheus.Counter
+	streamIdleTimeo  prometheus.Counter
+	streamChunkCount prometheus.Histogram
+	droppedTotal     *uint64
 }
 
 func NewRecorder() *Recorder {
@@ -42,6 +45,19 @@ func NewRecorder() *Recorder {
 		cacheMiss: promauto.NewCounter(prometheus.CounterOpts{
 			Name: "proxy_apikey_cache_miss_total",
 		}),
+		streamRequests: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "proxy_stream_requests_total",
+			Help: "Upstream responses detected as a stream (SSE / gRPC / chunked).",
+		}),
+		streamIdleTimeo: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "proxy_stream_idle_timeouts_total",
+			Help: "Streams terminated by the idle-timeout watchdog.",
+		}),
+		streamChunkCount: promauto.NewHistogram(prometheus.HistogramOpts{
+			Name:    "proxy_stream_chunk_count",
+			Help:    "Chunks flushed per streaming response.",
+			Buckets: []float64{1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000, 10000},
+		}),
 		droppedTotal: &dropped,
 	}
 	return r
@@ -60,3 +76,7 @@ func (r *Recorder) IncTruncated(side string) { r.truncated.WithLabelValues(side)
 
 func (r *Recorder) IncCacheHit()  { r.cacheHit.Inc() }
 func (r *Recorder) IncCacheMiss() { r.cacheMiss.Inc() }
+
+func (r *Recorder) IncStream()                 { r.streamRequests.Inc() }
+func (r *Recorder) IncStreamIdleTimeout()      { r.streamIdleTimeo.Inc() }
+func (r *Recorder) ObserveStreamChunks(n uint32) { r.streamChunkCount.Observe(float64(n)) }

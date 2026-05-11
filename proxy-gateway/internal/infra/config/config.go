@@ -19,6 +19,7 @@ type Config struct {
 	KafkaWorkers        int
 	APIKeyRefresh       time.Duration
 	UpstreamTimeout     time.Duration
+	StreamIdleTimeout   time.Duration
 	AllowPrivateTargets bool
 }
 
@@ -34,7 +35,8 @@ func Load() Config {
 		EventChanSize:   envInt("EVENT_CHAN_SIZE", 100_000),
 		KafkaWorkers:    envInt("KAFKA_WORKERS", 8),
 		APIKeyRefresh:   time.Duration(envInt("APIKEY_REFRESH_SECONDS", 10)) * time.Second,
-		UpstreamTimeout:     time.Duration(envInt("UPSTREAM_TIMEOUT_SECONDS", 30)) * time.Second,
+		UpstreamTimeout:     time.Duration(envInt("UPSTREAM_TIMEOUT_SECONDS", 60)) * time.Second,
+		StreamIdleTimeout:   time.Duration(envInt("STREAM_IDLE_TIMEOUT_SECONDS", 120)) * time.Second,
 		AllowPrivateTargets: envBool("ALLOW_PRIVATE_TARGETS", false),
 	}
 }

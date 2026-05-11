@@ -25,7 +25,9 @@ import {
 
 const ANY = "__any";
 const ALL_DIRS = "all";
+const STREAM_ANY = "any";
 type Dir = typeof ALL_DIRS | "inbound" | "outbound";
+type StreamFilter = typeof STREAM_ANY | "true" | "false";
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 const PRESET_KEYS: PresetKey[] = ["15m", "1h", "6h", "24h", "7d", "30d"];
 
@@ -50,6 +52,7 @@ export function LogsFilter({
     range?: string;
     from?: string;
     to?: string;
+    is_stream?: string;
   };
 }) {
   const router = useRouter();
@@ -63,21 +66,30 @@ export function LogsFilter({
       ? (defaults.direction as Dir)
       : ALL_DIRS,
   );
+  const [streamFilter, setStreamFilter] = useState<StreamFilter>(
+    defaults.is_stream === "true" || defaults.is_stream === "false"
+      ? (defaults.is_stream as StreamFilter)
+      : STREAM_ANY,
+  );
   const [range, setRange] = useState<RangeValue>(() => initialRange(defaults));
 
   const hasFilters = Boolean(
     defaults.method || defaults.status || defaults.path || defaults.direction
-      || defaults.from || defaults.to
+      || defaults.from || defaults.to || defaults.is_stream
       || (defaults.range && defaults.range !== "1h"),
   );
 
-  const buildParams = (overrides: Partial<{ direction: Dir; range: RangeValue }> = {}): URLSearchParams => {
+  const buildParams = (
+    overrides: Partial<{ direction: Dir; range: RangeValue; stream: StreamFilter }> = {},
+  ): URLSearchParams => {
     const params = new URLSearchParams();
     if (method && method !== ANY) params.set("method", method);
     if (status) params.set("status", status);
     if (path) params.set("path", path);
     const dir = overrides.direction ?? direction;
     if (dir !== ALL_DIRS) params.set("direction", dir);
+    const s = overrides.stream ?? streamFilter;
+    if (s !== STREAM_ANY) params.set("is_stream", s);
     const r = overrides.range ?? range;
     if (r.kind === "custom") {
       params.set("from", r.from.toISOString());
@@ -109,11 +121,18 @@ export function LogsFilter({
     push(buildParams({ range: v }));
   };
 
+  const onStreamChange = (v: string) => {
+    const s = v as StreamFilter;
+    setStreamFilter(s);
+    push(buildParams({ stream: s }));
+  };
+
   const clear = () => {
     setMethod(ANY);
     setStatus("");
     setPath("");
     setDirection(ALL_DIRS);
+    setStreamFilter(STREAM_ANY);
     setRange(toPreset("1h"));
     router.push(pathname ?? "/");
   };
@@ -163,6 +182,22 @@ export function LogsFilter({
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="stream-filter" className="text-xs">
+              Stream
+            </Label>
+            <Select value={streamFilter} onValueChange={onStreamChange}>
+              <SelectTrigger id="stream-filter" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={STREAM_ANY}>Any</SelectItem>
+                <SelectItem value="true">Streams only</SelectItem>
+                <SelectItem value="false">Non-streams</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex min-w-[16rem] flex-1 flex-col gap-1.5">

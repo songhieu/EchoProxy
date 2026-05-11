@@ -40,12 +40,16 @@ export default async function LogsPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { method?: string; status?: string; path?: string; direction?: string; range?: string; from?: string; to?: string };
+  searchParams: { method?: string; status?: string; path?: string; direction?: string; range?: string; from?: string; to?: string; is_stream?: string };
 }) {
   const session = await getSession();
   const direction =
     searchParams.direction === "inbound" || searchParams.direction === "outbound"
       ? searchParams.direction
+      : undefined;
+  const isStream =
+    searchParams.is_stream === "true" ? true
+      : searchParams.is_stream === "false" ? false
       : undefined;
   const range = resolveRange(searchParams);
 
@@ -57,6 +61,7 @@ export default async function LogsPage({
       status: searchParams.status ? Number(searchParams.status) : undefined,
       path: searchParams.path,
       direction,
+      is_stream: isStream,
       from: range.from,
       to: range.to,
       limit: 200,

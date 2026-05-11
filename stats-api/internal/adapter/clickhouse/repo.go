@@ -65,11 +65,19 @@ func (r *Repo) ListLogs(ctx context.Context, f domain.LogsFilter) ([]domain.LogE
 		where = append(where, "direction = ?")
 		args = append(args, f.Direction)
 	}
+	if f.IsStream != nil {
+		if *f.IsStream {
+			where = append(where, "is_stream = 1")
+		} else {
+			where = append(where, "is_stream = 0")
+		}
+	}
 
 	q := fmt.Sprintf(`
 		SELECT ts, event_id, project_id, api_key_id, source, direction, method, host, path, query, status,
 		       latency_ms, upstream_latency_ms, upstream_ttfb_ms,
-		       req_size, res_size, client_ip, user_agent, trace_id, error
+		       req_size, res_size, client_ip, user_agent, trace_id, error,
+		       is_stream, stream_chunk_count, stream_duration_ms, stream_idle_timeout
 		FROM http_events
 		WHERE %s
 		ORDER BY ts DESC
@@ -84,15 +92,22 @@ func (r *Repo) ListLogs(ctx context.Context, f domain.LogsFilter) ([]domain.LogE
 	defer rows.Close()
 	var out []domain.LogEvent
 	for rows.Next() {
-		var e domain.LogEvent
+		var (
+			e            domain.LogEvent
+			isStream     uint8
+			idleTimeout  uint8
+		)
 		if err := rows.Scan(
 			&e.Timestamp, &e.EventID, &e.ProjectID, &e.APIKeyID, &e.Source, &e.Direction,
 			&e.Method, &e.Host, &e.Path, &e.Query, &e.Status,
 			&e.LatencyMs, &e.UpstreamLatencyMs, &e.UpstreamTtfbMs,
 			&e.ReqSize, &e.ResSize, &e.ClientIP, &e.UserAgent, &e.TraceID, &e.Error,
+			&isStream, &e.StreamChunkCount, &e.StreamDurationMs, &idleTimeout,
 		); err != nil {
 			return nil, err
 		}
+		e.IsStream = isStream == 1
+		e.StreamIdleTimeout = idleTimeout == 1
 		out = append(out, e)
 	}
 	return out, rows.Err()
@@ -103,7 +118,8 @@ func (r *Repo) GetLog(ctx context.Context, projectID uint64, eventID string) (*d
 		SELECT ts, event_id, project_id, api_key_id, source, direction, method, host, path, query, status,
 		       latency_ms, upstream_latency_ms, upstream_ttfb_ms,
 		       req_size, res_size, req_headers, res_headers, req_body, res_body,
-		       req_truncated, res_truncated, client_ip, user_agent, trace_id, error
+		       req_truncated, res_truncated, client_ip, user_agent, trace_id, error,
+		       is_stream, stream_chunk_count, stream_duration_ms, stream_idle_timeout
 		FROM http_events WHERE project_id = ? AND event_id = ? LIMIT 1
 	`
 	var (
@@ -112,6 +128,8 @@ func (r *Repo) GetLog(ctx context.Context, projectID uint64, eventID string) (*d
 		resHeaders   map[string]string
 		reqTrunc     uint8
 		resTrunc     uint8
+		isStream     uint8
+		idleTimeout  uint8
 	)
 	row := r.conn.QueryRow(ctx, q, projectID, eventID)
 	if err := row.Scan(
@@ -121,6 +139,7 @@ func (r *Repo) GetLog(ctx context.Context, projectID uint64, eventID string) (*d
 		&e.ReqSize, &e.ResSize, &reqHeaders, &resHeaders,
 		&e.ReqBody, &e.ResBody, &reqTrunc, &resTrunc,
 		&e.ClientIP, &e.UserAgent, &e.TraceID, &e.Error,
+		&isStream, &e.StreamChunkCount, &e.StreamDurationMs, &idleTimeout,
 	); err != nil {
 		return nil, err
 	}
@@ -128,6 +147,8 @@ func (r *Repo) GetLog(ctx context.Context, projectID uint64, eventID string) (*d
 	e.ResHeaders = resHeaders
 	e.ReqTruncated = reqTrunc == 1
 	e.ResTruncated = resTrunc == 1
+	e.IsStream = isStream == 1
+	e.StreamIdleTimeout = idleTimeout == 1
 	return &e, nil
 }
 

@@ -61,6 +61,7 @@ func (h *Handler) listLogs(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		Status:    uint16(parseUint(q.Get("status"))),
 		PathLike:  q.Get("path"),
 		Direction: q.Get("direction"),
+		IsStream:  parseTriBool(q.Get("is_stream")),
 		Limit:     int(parseUint(q.Get("limit"))),
 		Offset:    int(parseUint(q.Get("offset"))),
 	}
@@ -235,6 +236,20 @@ func parseUint(s string) uint64 {
 	}
 	v, _ := strconv.ParseUint(s, 10, 64)
 	return v
+}
+
+// parseTriBool returns nil for empty / unrecognised input so callers can
+// treat that as "no filter". "1"/"true"/"yes" → true, "0"/"false"/"no" → false.
+func parseTriBool(s string) *bool {
+	switch strings.ToLower(s) {
+	case "1", "true", "yes":
+		v := true
+		return &v
+	case "0", "false", "no":
+		v := false
+		return &v
+	}
+	return nil
 }
 
 func parseTime(s string) time.Time {

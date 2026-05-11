@@ -42,6 +42,12 @@ message HttpEvent {
   map<string, string> attributes = 33;
   string error       = 34;            // non-empty if upstream failed
   string direction   = 35;            // "inbound" (server middleware) | "outbound" (proxy / client wrapper)
+
+  // Streaming (SSE, chunked, gRPC, etc). Zero values mean "not a stream".
+  bool   is_stream            = 36;   // upstream returned a streaming response
+  uint32 stream_chunk_count   = 37;   // number of write/flush chunks emitted to the client
+  uint32 stream_duration_ms   = 38;   // time spent streaming the body (first byte → close)
+  bool   stream_idle_timeout  = 39;   // true if the stream was terminated by the idle-timeout watchdog
 }
 
 message IngestRequest {

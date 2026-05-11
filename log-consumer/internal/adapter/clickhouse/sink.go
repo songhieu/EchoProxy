@@ -39,7 +39,8 @@ func (s *Sink) Insert(ctx context.Context, rows []domain.Row) error {
 		method, scheme, host, path, query, status, latency_ms, upstream_latency_ms, upstream_ttfb_ms,
 		req_size, res_size,
 		req_headers, res_headers, req_body, res_body, req_truncated, res_truncated,
-		client_ip, user_agent, trace_id, attributes, error
+		client_ip, user_agent, trace_id, attributes, error,
+		is_stream, stream_chunk_count, stream_duration_ms, stream_idle_timeout
 	)`)
 	if err != nil {
 		return fmt.Errorf("prepare batch: %w", err)
@@ -56,6 +57,7 @@ func (s *Sink) Insert(ctx context.Context, rows []domain.Row) error {
 			r.ReqSize, r.ResSize,
 			r.ReqHeaders, r.ResHeaders, r.ReqBody, r.ResBody, r.ReqTruncated, r.ResTruncated,
 			r.ClientIP, r.UserAgent, r.TraceID, r.Attributes, r.Error,
+			r.IsStream, r.StreamChunkCount, r.StreamDurationMs, r.StreamIdleTimeout,
 		); err != nil {
 			return fmt.Errorf("append: %w", err)
 		}

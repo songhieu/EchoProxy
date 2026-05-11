@@ -147,6 +147,11 @@ func decode(b []byte) (domain.Row, error) {
 		TraceID:      ev.TraceId,
 		Attributes:   nilSafeMap(ev.Attributes),
 		Error:        ev.Error,
+
+		IsStream:          boolToU8(ev.IsStream),
+		StreamChunkCount:  ev.StreamChunkCount,
+		StreamDurationMs:  ev.StreamDurationMs,
+		StreamIdleTimeout: boolToU8(ev.StreamIdleTimeout),
 	}, nil
 }
 

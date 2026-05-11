@@ -82,13 +82,23 @@ func main() {
 		limiter = ratelimit.Disabled()
 	}
 	validateUC := usecase.NewValidateAPIKey(repo, c)
-	proxyUC := usecase.NewProxyRequest(transport, sink, cfg.BodyCapBytes, rec, redactor)
+	proxyUC := usecase.NewProxyRequest(transport, sink, cfg.BodyCapBytes, rec, redactor, cfg.StreamIdleTimeout)
 	handler := httpadapter.NewProxyHandler(validateUC, proxyUC, limiter)
 
 	var ready uint32
 	atomic.StoreUint32(&ready, 1)
 
-	adminMux := server.NewAdminMux(func() bool { return atomic.LoadUint32(&ready) == 1 })
+	adminMux := server.NewAdminMux(
+		func() bool { return atomic.LoadUint32(&ready) == 1 },
+		func() server.AdminConfigView {
+			return server.AdminConfigView{
+				UpstreamTimeoutSeconds:   int(cfg.UpstreamTimeout / time.Second),
+				StreamIdleTimeoutSeconds: int(cfg.StreamIdleTimeout / time.Second),
+				BodyCapBytes:             cfg.BodyCapBytes,
+				AllowPrivateTargets:      cfg.AllowPrivateTargets,
+			}
+		},
+	)
 
 	mainSrv := &http.Server{
 		Addr:              cfg.ListenAddr,

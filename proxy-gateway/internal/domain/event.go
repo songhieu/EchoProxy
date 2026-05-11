@@ -42,4 +42,10 @@ type EventPayload struct {
 	TraceID   string
 	Error     string
 	Direction string
+
+	// Streaming. Zero values = not a stream.
+	IsStream          bool
+	StreamChunkCount  uint32
+	StreamDurationMs  uint32
+	StreamIdleTimeout bool
 }

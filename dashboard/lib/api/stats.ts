@@ -40,11 +40,13 @@ export async function listLogs(
     from?: string;
     to?: string;
     limit?: number;
+    is_stream?: boolean | "true" | "false" | "";
   } = {},
 ) {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(q)) {
-    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+    if (v === undefined || v === null || v === "") continue;
+    params.set(k, typeof v === "boolean" ? (v ? "true" : "false") : String(v));
   }
   return getList<LogEvent>(`/v1/projects/${projectID}/logs?${params.toString()}`, token);
 }

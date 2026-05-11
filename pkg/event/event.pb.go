@@ -52,14 +52,19 @@ type HttpEvent struct {
 	ReqBodyTruncated  bool              `protobuf:"varint,24,opt,name=req_body_truncated,json=reqBodyTruncated,proto3" json:"req_body_truncated,omitempty"`
 	ResBodyTruncated  bool              `protobuf:"varint,25,opt,name=res_body_truncated,json=resBodyTruncated,proto3" json:"res_body_truncated,omitempty"`
 	// Network / context
-	ClientIp      string            `protobuf:"bytes,30,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
-	UserAgent     string            `protobuf:"bytes,31,opt,name=user_agent,json=userAgent,proto3" json:"user_agent,omitempty"`
-	TraceId       string            `protobuf:"bytes,32,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"` // W3C traceparent
-	Attributes    map[string]string `protobuf:"bytes,33,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Error         string            `protobuf:"bytes,34,opt,name=error,proto3" json:"error,omitempty"`         // non-empty if upstream failed
-	Direction     string            `protobuf:"bytes,35,opt,name=direction,proto3" json:"direction,omitempty"` // "inbound" (server middleware) | "outbound" (proxy / client wrapper)
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ClientIp   string            `protobuf:"bytes,30,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
+	UserAgent  string            `protobuf:"bytes,31,opt,name=user_agent,json=userAgent,proto3" json:"user_agent,omitempty"`
+	TraceId    string            `protobuf:"bytes,32,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"` // W3C traceparent
+	Attributes map[string]string `protobuf:"bytes,33,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Error      string            `protobuf:"bytes,34,opt,name=error,proto3" json:"error,omitempty"`         // non-empty if upstream failed
+	Direction  string            `protobuf:"bytes,35,opt,name=direction,proto3" json:"direction,omitempty"` // "inbound" (server middleware) | "outbound" (proxy / client wrapper)
+	// Streaming (SSE, chunked, gRPC, etc). Zero values mean "not a stream".
+	IsStream          bool   `protobuf:"varint,36,opt,name=is_stream,json=isStream,proto3" json:"is_stream,omitempty"`                              // upstream returned a streaming response
+	StreamChunkCount  uint32 `protobuf:"varint,37,opt,name=stream_chunk_count,json=streamChunkCount,proto3" json:"stream_chunk_count,omitempty"`    // number of write/flush chunks emitted to the client
+	StreamDurationMs  uint32 `protobuf:"varint,38,opt,name=stream_duration_ms,json=streamDurationMs,proto3" json:"stream_duration_ms,omitempty"`    // time spent streaming the body (first byte → close)
+	StreamIdleTimeout bool   `protobuf:"varint,39,opt,name=stream_idle_timeout,json=streamIdleTimeout,proto3" json:"stream_idle_timeout,omitempty"` // true if the stream was terminated by the idle-timeout watchdog
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *HttpEvent) Reset() {
@@ -295,6 +300,34 @@ func (x *HttpEvent) GetDirection() string {
 	return ""
 }
 
+func (x *HttpEvent) GetIsStream() bool {
+	if x != nil {
+		return x.IsStream
+	}
+	return false
+}
+
+func (x *HttpEvent) GetStreamChunkCount() uint32 {
+	if x != nil {
+		return x.StreamChunkCount
+	}
+	return 0
+}
+
+func (x *HttpEvent) GetStreamDurationMs() uint32 {
+	if x != nil {
+		return x.StreamDurationMs
+	}
+	return 0
+}
+
+func (x *HttpEvent) GetStreamIdleTimeout() bool {
+	if x != nil {
+		return x.StreamIdleTimeout
+	}
+	return false
+}
+
 type IngestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Events        []*HttpEvent           `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
@@ -403,7 +436,8 @@ var File_event_proto protoreflect.FileDescriptor
 
 const file_event_proto_rawDesc = "" +
 	"\n" +
-	"\vevent.proto\x12\fechoproxy.v1\"\xab\t\n" +
+	"\vevent.proto\x12\fechoproxy.v1\"\xd4\n" +
+	"\n" +
 	"\tHttpEvent\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12!\n" +
 	"\ftimestamp_ns\x18\x02 \x01(\x03R\vtimestampNs\x12\x16\n" +
@@ -443,7 +477,11 @@ const file_event_proto_rawDesc = "" +
 	"attributes\x18! \x03(\v2'.echoproxy.v1.HttpEvent.AttributesEntryR\n" +
 	"attributes\x12\x14\n" +
 	"\x05error\x18\" \x01(\tR\x05error\x12\x1c\n" +
-	"\tdirection\x18# \x01(\tR\tdirection\x1a=\n" +
+	"\tdirection\x18# \x01(\tR\tdirection\x12\x1b\n" +
+	"\tis_stream\x18$ \x01(\bR\bisStream\x12,\n" +
+	"\x12stream_chunk_count\x18% \x01(\rR\x10streamChunkCount\x12,\n" +
+	"\x12stream_duration_ms\x18& \x01(\rR\x10streamDurationMs\x12.\n" +
+	"\x13stream_idle_timeout\x18' \x01(\bR\x11streamIdleTimeout\x1a=\n" +
 	"\x0fReqHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
