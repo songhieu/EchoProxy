@@ -62,6 +62,19 @@ export async function updateProjectRetention(
   });
 }
 
+export async function deleteProject(token: string, projectID: number | string) {
+  // Bypass request<T> because the 204 No Content body breaks JSON parsing.
+  const res = await fetch(`${AUTH_API}/v1/projects/${projectID}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (res.status === 401) redirect("/api/auth/signout?callbackUrl=/login");
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`auth-api ${res.status}: ${await res.text()}`);
+  }
+}
+
 export async function listAPIKeys(token: string, projectID: number | string) {
   return (await request<APIKey[] | null>(`/v1/projects/${projectID}/keys`, { token })) ?? [];
 }

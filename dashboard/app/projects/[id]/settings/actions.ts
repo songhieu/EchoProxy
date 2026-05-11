@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateProjectRetention } from "@/lib/api/auth";
+import { redirect } from "next/navigation";
+import { deleteProject, updateProjectRetention } from "@/lib/api/auth";
 import { getSession } from "@/lib/auth";
 
 export async function setRetention(projectId: number, days: number) {
@@ -16,4 +17,17 @@ export async function setRetention(projectId: number, days: number) {
   } catch (err) {
     return { ok: false, error: (err as Error).message } as const;
   }
+}
+
+// deleteProjectAction is irreversible. The client is responsible for the
+// type-the-name confirmation; this just enforces auth + invalidates cache.
+export async function deleteProjectAction(projectId: number) {
+  const session = await getSession();
+  try {
+    await deleteProject(session.token, projectId);
+  } catch (err) {
+    return { ok: false, error: (err as Error).message } as const;
+  }
+  revalidatePath("/projects");
+  redirect("/projects");
 }

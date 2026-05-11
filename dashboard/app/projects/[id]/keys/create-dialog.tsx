@@ -56,10 +56,23 @@ export function CreateKeyDialog({ projectId }: { projectId: string }) {
             <div className="rounded-md border border-warning/40 bg-warning/5 p-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-medium text-warning">
                 <AlertTriangle className="h-4 w-4" />
-                One-time view
+                One-time view — not stored, not recoverable
               </div>
-              <code className="block break-all font-mono text-xs">{created}</code>
-              <div className="mt-3">
+              {/* Click the code itself selects all so users without clipboard
+                  permission can still ⌘C. */}
+              <code
+                className="block cursor-text select-all break-all rounded bg-background px-3 py-2 font-mono text-xs"
+                onClick={(e) => {
+                  const r = document.createRange();
+                  r.selectNodeContents(e.currentTarget);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(r);
+                }}
+              >
+                {created}
+              </code>
+              <div className="mt-3 flex items-center justify-end">
                 <CopyButton value={created} label="API key" />
               </div>
             </div>

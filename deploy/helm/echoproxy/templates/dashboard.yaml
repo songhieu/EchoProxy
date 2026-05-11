@@ -24,7 +24,6 @@ spec:
         - name: dashboard
           image: {{ include "echoproxy.image" (dict "Values" .Values "service" "dashboard") }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          # Dashboard writes nothing to disk at runtime; keep root read-only.
           securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - { name: http, containerPort: 3000 }
@@ -38,6 +37,14 @@ spec:
               value: {{ .Values.dashboard.publicURL | quote }}
           envFrom:
             - secretRef: { name: {{ include "echoproxy.secretName" . }} }
+          # Next.js writes its incremental cache + tags manifest under
+          # /app/.next/cache at runtime (every revalidatePath, every server
+          # action). readOnlyRootFilesystem blocks this — mount writable
+          # emptyDirs for the two paths that need it. Keeps the rest of
+          # the rootfs read-only.
+          volumeMounts:
+            - { name: next-cache, mountPath: /app/.next/cache }
+            - { name: tmp,        mountPath: /tmp }
           livenessProbe:
             httpGet: { path: /, port: http }
             initialDelaySeconds: 15
@@ -46,6 +53,9 @@ spec:
             httpGet: { path: /, port: http }
             initialDelaySeconds: 10
           resources: {{- toYaml .Values.dashboard.resources | nindent 12 }}
+      volumes:
+        - { name: next-cache, emptyDir: {} }
+        - { name: tmp,        emptyDir: {} }
 ---
 apiVersion: v1
 kind: Service

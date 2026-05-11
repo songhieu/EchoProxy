@@ -45,6 +45,7 @@ type ProjectRepository interface {
 	List(ctx context.Context, ownerID uint64) ([]*Project, error)
 	Get(ctx context.Context, id, ownerID uint64) (*Project, error)
 	UpdateRetention(ctx context.Context, id, ownerID uint64, days int) (*Project, error)
+	Delete(ctx context.Context, id, ownerID uint64) error
 }
 
 type APIKeyRepository interface {

@@ -46,6 +46,7 @@ func (h *Handler) Routes() stdhttp.Handler {
 		r.Post("/v1/projects", h.createProject)
 		r.Get("/v1/projects/{projectID}", h.getProject)
 		r.Patch("/v1/projects/{projectID}", h.updateProject)
+		r.Delete("/v1/projects/{projectID}", h.deleteProject)
 		r.Get("/v1/projects/{projectID}/keys", h.listKeys)
 		r.Post("/v1/projects/{projectID}/keys", h.createKey)
 		r.Get("/v1/projects/{projectID}/keys/{keyID}", h.getKey)
@@ -181,6 +182,23 @@ func (h *Handler) updateProject(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		return
 	}
 	writeJSON(w, stdhttp.StatusOK, p)
+}
+
+// deleteProject removes the project. Postgres FK cascades to api_keys; the
+// ClickHouse retention sweep removes events tied to the (now-deleted)
+// project_id when their TTL fires.
+func (h *Handler) deleteProject(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	uid := userID(r.Context())
+	pid, err := strconv.ParseUint(chi.URLParam(r, "projectID"), 10, 64)
+	if err != nil {
+		writeErr(w, stdhttp.StatusBadRequest, "bad project id")
+		return
+	}
+	if err := h.projects.Delete(r.Context(), pid, uid); err != nil {
+		writeProjectErr(w, err)
+		return
+	}
+	w.WriteHeader(stdhttp.StatusNoContent)
 }
 
 // ─── API keys ───────────────────────────────────────────────────────────────

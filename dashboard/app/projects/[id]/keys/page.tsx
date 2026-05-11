@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CopyButton } from "@/components/copy-button";
 import { CreateKeyDialog } from "./create-dialog";
 import { RevokeKeyButton } from "./revoke-button";
 import { formatRelative, isRedirectError } from "@/lib/utils";
@@ -64,7 +65,10 @@ export default async function KeysPage({ params }: { params: { id: string } }) {
                 {keys.map((k) => (
                   <TableRow key={k.id}>
                     <TableCell>
-                      <code className="font-mono text-xs">{k.prefix}…</code>
+                      <div className="flex items-center gap-2">
+                        <code className="font-mono text-xs">{k.prefix}…</code>
+                        <CopyButton value={k.prefix} size="icon" label="Key prefix" />
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-[18rem]">
                       {k.allowlist.length === 0 ? (

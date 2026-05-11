@@ -130,6 +130,22 @@ func (r *ProjectRepo) UpdateRetention(ctx context.Context, id, ownerID uint64, d
 	return &p, nil
 }
 
+// Delete removes the project. API keys cascade via the FK in
+// migrations/postgres/001_init.sql (api_keys.project_id REFERENCES projects(id)
+// ON DELETE CASCADE). Owner check is enforced in WHERE so users can't
+// nuke each other's projects via id-guessing.
+func (r *ProjectRepo) Delete(ctx context.Context, id, ownerID uint64) error {
+	const q = `DELETE FROM projects WHERE id = $1 AND owner_id = $2`
+	tag, err := r.pool.Exec(ctx, q, id, ownerID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrProjectNotFound
+	}
+	return nil
+}
+
 // ─── API Key ────────────────────────────────────────────────────────────────
 type APIKeyRepo struct{ pool *pgxpool.Pool }
 

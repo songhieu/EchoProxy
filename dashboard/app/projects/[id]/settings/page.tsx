@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RetentionForm } from "./retention-form";
+import { DeleteProjectButton } from "./delete-project";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,20 @@ export default async function SettingsPage({ params }: { params: { id: string } 
             <code className="rounded bg-muted px-1 text-xs">docs/retention.md</code>.
           </p>
           <RetentionForm projectId={project.id} initial={project.retention_days} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Deleting a project drops the project row + all API keys
+            (Postgres ON DELETE CASCADE). Events stay in ClickHouse until
+            the retention window above expires. Action is irreversible.
+          </p>
+          <DeleteProjectButton projectId={project.id} projectName={project.name} />
         </CardContent>
       </Card>
 

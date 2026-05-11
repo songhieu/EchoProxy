@@ -29,6 +29,14 @@ func (p *Projects) UpdateRetention(ctx context.Context, id, ownerID uint64, days
 	return p.repo.UpdateRetention(ctx, id, ownerID, days)
 }
 
+// Delete removes the project + cascades its API keys (Postgres FK with
+// ON DELETE CASCADE). ClickHouse events stay until retention expires —
+// they're tied to project_id and the cleanup job drops them based on
+// the project's retention window when the project is gone.
+func (p *Projects) Delete(ctx context.Context, id, ownerID uint64) error {
+	return p.repo.Delete(ctx, id, ownerID)
+}
+
 type APIKeys struct {
 	keys     domain.APIKeyRepository
 	projects domain.ProjectRepository
