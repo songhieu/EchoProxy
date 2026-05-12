@@ -105,7 +105,7 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	outReq, err := http.NewRequestWithContext(upstreamCtx, r.Method, outURL.String(), bodyForUpstream)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
-		uc.emit(r, key, target, http.StatusBadRequest, start, time.Since(start), 0, 0, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error(), streamInfo{})
+		uc.emit(r, key, target, http.StatusBadRequest, start, time.Since(start), 0, 0, reqBuf, resBuf, cappedReq.truncated, false, nil, "", "", err.Error(), streamInfo{})
 		return
 	}
 	copyHeaders(outReq.Header, r.Header)
@@ -138,13 +138,14 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 	}
 	if err != nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
-		uc.emit(r, key, target, http.StatusBadGateway, start, time.Since(start), upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, false, nil, "", err.Error(), streamInfo{})
+		uc.emit(r, key, target, http.StatusBadGateway, start, time.Since(start), upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, false, nil, "", "", err.Error(), streamInfo{})
 		return
 	}
 	defer resp.Body.Close()
 
 	resHeaders := flattenHeaders(resp.Header)
 	resContentType := resp.Header.Get("Content-Type")
+	resContentEncoding := resp.Header.Get("Content-Encoding")
 	copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
 
@@ -178,7 +179,7 @@ func (uc *ProxyRequest) Execute(w http.ResponseWriter, r *http.Request, key *dom
 		uc.metrics.IncTruncated("res")
 	}
 
-	uc.emit(r, key, target, resp.StatusCode, start, d, upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, cappedRes.truncated, resHeaders, resContentType, "", stream)
+	uc.emit(r, key, target, resp.StatusCode, start, d, upstreamLatency, ttfb, reqBuf, resBuf, cappedReq.truncated, cappedRes.truncated, resHeaders, resContentType, resContentEncoding, "", stream)
 }
 
 // streamInfo carries observations gathered during a streaming copy.
@@ -277,12 +278,24 @@ func (uc *ProxyRequest) streamCopy(ctx context.Context, cancel context.CancelFun
 
 func (uc *ProxyRequest) emit(r *http.Request, key *domain.APIKey, target *url.URL, status int,
 	arrival time.Time, total, upstream, ttfb time.Duration,
-	reqBuf, resBuf *bytes.Buffer, reqTrunc, resTrunc bool, resHeaders map[string]string, resContentType, errStr string,
+	reqBuf, resBuf *bytes.Buffer, reqTrunc, resTrunc bool, resHeaders map[string]string, resContentType, resContentEncoding, errStr string,
 	stream streamInfo) {
 	red := key.Redactor
 	if red == nil {
 		red = uc.defaultRedactor
 	}
+
+	// On-the-wire bytes have already been forwarded to the client by the time
+	// we get here. The captures below are persisted ONLY for dashboard
+	// display, so we decode common compression and replace opaque binary
+	// payloads with a short placeholder. The client's response is untouched.
+	cap := uc.bodyCap
+	if key.BodyCap > 0 {
+		cap = key.BodyCap
+	}
+	reqBody, reqTruncOut := normalizeCapturedBody(reqBuf.Bytes(), r.Header.Get("Content-Encoding"), r.Header.Get("Content-Type"), cap, reqTrunc)
+	resBody, resTruncOut := normalizeCapturedBody(resBuf.Bytes(), resContentEncoding, resContentType, cap, resTrunc)
+
 	payload := domain.EventPayload{
 		EventID:           event.NewEventID(),
 		TimestampNs:       arrival.UnixNano(),
@@ -302,10 +315,10 @@ func (uc *ProxyRequest) emit(r *http.Request, key *domain.APIKey, target *url.UR
 		ResSize:           uint32(resBuf.Len()),
 		ReqHeaders:       red.Headers(headerSnapshot(r.Header, []string{"X-Echo-Key"})),
 		ResHeaders:       red.Headers(resHeaders),
-		ReqBody:          red.Body(append([]byte(nil), reqBuf.Bytes()...), r.Header.Get("Content-Type")),
-		ResBody:          red.Body(append([]byte(nil), resBuf.Bytes()...), resContentType),
-		ReqBodyTruncated: reqTrunc,
-		ResBodyTruncated: resTrunc,
+		ReqBody:          red.Body(reqBody, r.Header.Get("Content-Type")),
+		ResBody:          red.Body(resBody, resContentType),
+		ReqBodyTruncated: reqTruncOut,
+		ResBodyTruncated: resTruncOut,
 		ClientIP:         clientIP(r),
 		UserAgent:        r.UserAgent(),
 		TraceID:          r.Header.Get("traceparent"),
