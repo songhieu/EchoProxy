@@ -35,6 +35,40 @@ apart.
 - **You can't reach the proxy from your runtime (Fly.io firewall, on-prem, etc.)?** → outbound SDK mode. SDK ships events directly to ingest-api over HTTP/gRPC.
 - **All of the above** → use both. Project owners filter by direction in the dashboard's logs page.
 
+## Outbound: proxy mode vs capture mode
+
+For outbound you pick **how** the SDK captures, not whether to capture:
+
+|                       | **Proxy mode**                       | **Capture mode**                      |
+|-----------------------|--------------------------------------|---------------------------------------|
+| Who calls the upstream | proxy-gateway (Go) does the RoundTrip | your app does the RoundTrip          |
+| Where the event is emitted | proxy-gateway → Kafka            | SDK buffer → ingest-api → Kafka       |
+| Event `source`        | `proxy-gateway`                      | `sdk-go` / `sdk-python` / `sdk-laravel` / `sdk-ts` |
+| Dashboard mode badge  | **proxy** (network icon)             | **capture** (package icon)            |
+| `upstream_latency_ms` | server-side `httptrace` (authoritative) | client-side measurement              |
+| `upstream_ttfb_ms`    | always real TTFB                     | depends on the runtime (Go/Python OK, PHP needs cURL handler) |
+| Body cap enforced     | proxy-gateway                        | SDK                                   |
+| Code change in app    | swap HTTP-client import              | wrap the HTTP client                  |
+| Best for              | most projects — accurate, no buffer/flush state in your process | runtimes that can't reach the proxy; per-call programmatic context |
+| Avoid when            | your runtime is on a network island  | you want the timing the proxy reports |
+
+### Rule of thumb
+
+1. **Can your runtime reach `proxy-gateway:8080`?** → use **proxy mode**. It's more accurate and you don't have to manage the SDK's in-memory buffer.
+2. **Can't reach the proxy** (Lambda + private VPC, edge worker, Fly.io firewall, on-prem service that talks only to its own VPC) → use **capture mode**. Events go directly to ingest-api (`:8081`) over HTTP.
+3. **You have many existing call-sites** using Guzzle/httpx/`net/http` and don't want to refactor → use **capture mode** (`GuzzleMiddleware`, `httpx_hook`, `RoundTripper` wrapper). One line per HTTP client.
+
+Both modes land in the same ClickHouse table and feed the same dashboard. Logs and analytics filter by `source` and `direction`. The mode badge on each row makes the distinction visible at a glance.
+
+### Per-SDK mapping
+
+| Language        | Proxy mode               | Capture mode                       |
+|-----------------|--------------------------|------------------------------------|
+| **Go**          | `sdk-reference-go/proxy` (`sid.Get`, `sid.Client()`) | `sdk.Client.Capture` from a `RoundTripper` wrapper |
+| **Python**      | `echoproxy.proxy.session()` (drop-in for `requests`) | `echoproxy.httpx_hook.hooks()` (httpx event hooks) |
+| **Laravel/PHP** | `Echoproxy\Sdk\ProxyClient` (drop-in for `Http::*`) | `Echoproxy\Sdk\Http\GuzzleMiddleware` (Guzzle handler stack) |
+| **TypeScript**  | `@echoproxy/sdk-ts` proxy wrapper | `fetch` interceptor               |
+
 ## Filtering in the dashboard
 
 `/projects/<id>/logs` has a tab bar:

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
-import { DirectionBadge, MethodBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
+import { DirectionBadge, MethodBadge, ModeBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
 import { formatBytes } from "@/lib/utils";
 import type { LogEvent } from "@/lib/api/types";
 
@@ -67,6 +67,7 @@ export function LogDetailSheet({
                 {event.host}
                 {event.path}
               </code>
+              <ModeBadge source={event.source} />
               {event.is_stream && (
                 <StreamBadge
                   isStream
@@ -113,7 +114,7 @@ export function LogDetailSheet({
                 <Stat label="Upstream" value={`${event.upstream_latency_ms} ms`} />
                 <Stat label="TTFB" value={`${event.upstream_ttfb_ms} ms`} />
                 <Stat
-                  label="Proxy overhead"
+                  label={event.source === "proxy-gateway" ? "Proxy overhead" : "SDK overhead"}
                   value={`${Math.max(0, event.latency_ms - event.upstream_latency_ms)} ms`}
                 />
                 <Stat

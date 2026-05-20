@@ -24,9 +24,11 @@ type jsonEvent struct {
 	Host             string            `json:"host"`
 	Path             string            `json:"path"`
 	Query            string            `json:"query"`
-	Status           uint32            `json:"status"`
-	LatencyMs        uint32            `json:"latency_ms"`
-	ReqSize          uint32            `json:"req_size"`
+	Status            uint32            `json:"status"`
+	LatencyMs         uint32            `json:"latency_ms"`
+	UpstreamLatencyMs uint32            `json:"upstream_latency_ms"`
+	UpstreamTtfbMs    uint32            `json:"upstream_ttfb_ms"`
+	ReqSize           uint32            `json:"req_size"`
 	ResSize          uint32            `json:"res_size"`
 	ReqHeaders       map[string]string `json:"req_headers"`
 	ResHeaders       map[string]string `json:"res_headers"`
@@ -118,9 +120,11 @@ func fromJSON(j *jsonEvent) *event.HttpEvent {
 		Host:             j.Host,
 		Path:             j.Path,
 		Query:            j.Query,
-		Status:           j.Status,
-		LatencyMs:        j.LatencyMs,
-		ReqSize:          j.ReqSize,
+		Status:            j.Status,
+		LatencyMs:         j.LatencyMs,
+		UpstreamLatencyMs: j.UpstreamLatencyMs,
+		UpstreamTtfbMs:    j.UpstreamTtfbMs,
+		ReqSize:           j.ReqSize,
 		ResSize:          j.ResSize,
 		ReqHeaders:       j.ReqHeaders,
 		ResHeaders:       j.ResHeaders,

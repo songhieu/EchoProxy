@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogDetailSheet } from "@/components/log-detail-sheet";
-import { DirectionBadge, MethodBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
+import { DirectionBadge, MethodBadge, ModeBadge, StatusBadge, StreamBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { LogEvent } from "@/lib/api/types";
@@ -29,7 +29,8 @@ export function LogsTable({ projectId, logs }: { projectId: string; logs: LogEve
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right" title="Upstream RoundTrip">Upstream</TableHead>
                 <TableHead className="text-right" title="Time-to-first-byte from upstream">TTFB</TableHead>
-                <TableHead className="text-right" title="Proxy-side overhead = total − upstream">Overhead</TableHead>
+                <TableHead className="text-right" title="total − upstream. Proxy hop in proxy mode; SDK wrapper cost in capture mode.">Overhead</TableHead>
+                <TableHead title="How the event was captured (proxy hop vs. in-app SDK)">Mode</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Trace</TableHead>
               </TableRow>
@@ -85,6 +86,9 @@ export function LogsTable({ projectId, logs }: { projectId: string; logs: LogEve
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {Math.max(0, l.latency_ms - l.upstream_latency_ms)} ms
+                  </TableCell>
+                  <TableCell>
+                    <ModeBadge source={l.source} />
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="font-mono text-[10px]">

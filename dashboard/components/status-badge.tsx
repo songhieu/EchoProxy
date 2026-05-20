@@ -1,6 +1,38 @@
-import { ArrowDownLeft, ArrowUpRight, Radio, AlertCircle } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Radio, AlertCircle, Network, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { statusVariant } from "@/lib/utils";
+
+// ModeBadge distinguishes how an event was captured:
+//   - Proxy   → the request went through proxy-gateway (Go did the actual
+//               upstream RoundTrip). Source = "proxy-gateway". Full latency
+//               breakdown (upstream / TTFB / overhead) is authoritative.
+//   - Capture → the SDK called the upstream itself, then shipped an event
+//               to ingest-api. Source = "sdk-*". upstream_latency_ms is the
+//               transport time as measured by the SDK; "overhead" reflects
+//               the in-app wrapper cost (usually tiny), not a proxy hop.
+export function ModeBadge({ source }: { source?: string }) {
+  const isProxy = source === "proxy-gateway";
+  if (isProxy) {
+    return (
+      <Badge
+        variant="default"
+        className="gap-1 font-mono text-[10px]"
+        title="Proxy mode — proxy-gateway forwarded the request to the upstream. Latency breakdown is measured server-side."
+      >
+        <Network className="h-3 w-3" /> proxy
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="secondary"
+      className="gap-1 font-mono text-[10px]"
+      title="Capture mode — the SDK called the upstream directly and shipped the event to ingest-api. upstream_latency_ms is the SDK's transport measurement."
+    >
+      <Package className="h-3 w-3" /> capture
+    </Badge>
+  );
+}
 
 export function DirectionBadge({ direction }: { direction?: string }) {
   if (direction === "inbound") {

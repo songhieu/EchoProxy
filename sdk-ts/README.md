@@ -1,6 +1,21 @@
 # @echoproxy/sdk
 
-TypeScript / JavaScript SDK for the [EchoProxy](../README.md) HTTP observability platform. Drop-in replacement for the global `fetch`.
+TypeScript / JavaScript SDK for the [EchoProxy](../README.md) HTTP observability platform.
+
+## Capture outbound HTTP — pick a mode
+
+There are **two** ways to capture outbound calls. Pick one per project — see [`docs/inbound-vs-outbound.md`](../docs/inbound-vs-outbound.md) for the full comparison.
+
+|                       | Proxy mode (`@echoproxy/sdk/proxy`) | Capture mode (`IngestClient`)          |
+|-----------------------|-------------------------------------|----------------------------------------|
+| Who calls the upstream | **proxy-gateway** (Go)             | **your runtime** (native `fetch`)      |
+| Where the event is emitted | proxy-gateway → Kafka          | SDK → ingest-api → Kafka               |
+| `upstream_latency_ms` | server-side, authoritative          | client-side measurement                |
+| `upstream_ttfb_ms`    | yes                                 | 0 (fetch doesn't expose TTFB)          |
+| Dashboard `source`    | `proxy-gateway`                     | `sdk-ts`                               |
+| Dashboard mode badge  | **proxy**                           | **capture**                            |
+| Code change           | swap `fetch` import                 | wrap `fetch` + push events             |
+| Best for              | most projects                       | edge runtimes / firewalled environments |
 
 ## Install
 
@@ -12,7 +27,7 @@ export ECHOPROXY_API_KEY=sk_live_xxx
 export ECHOPROXY_PROXY_URL=http://localhost:8080  # optional, default http://localhost:8080
 ```
 
-## Use
+## Proxy mode — drop-in for `fetch`
 
 ```ts
 import { fetch } from "@echoproxy/sdk/proxy";

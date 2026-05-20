@@ -68,14 +68,16 @@ Client ─HTTP─────────────▶  Your app  ────
 
 Three capture paths, one event schema:
 
-- **Outbound via proxy** — route traffic at `proxy-gateway:8080` with `X-Echo-Target`. Zero code change.
-- **Outbound via SDK** — wrap the HTTP client (`fetch`, `requests`, `http.Client`, Guzzle). For runtimes that can't reach the proxy.
+- **Outbound, proxy mode** — route traffic at `proxy-gateway:8080` with `X-Echo-Target`. Go does the upstream RoundTrip. Authoritative timing (TTFB, upstream, overhead). Zero code change beyond an import swap. `source = proxy-gateway`.
+- **Outbound, capture mode** — wrap the HTTP client (`fetch`, `requests`, `httpx`, `net/http`, Guzzle). Your app does the call, SDK ships an event to ingest-api. Use when the runtime can't reach proxy-gateway. `source = sdk-*`.
 - **Inbound via SDK middleware** — wrap your web framework (Express, FastAPI, Laravel HTTP kernel, Go `http.Handler`). Captures incoming traffic + responses you return.
 
 Events from any path land in the same Kafka topic and ClickHouse table,
-distinguished by the `direction` column. See
+distinguished by the `direction` column and the `source` column. The dashboard
+shows a **mode badge** (proxy / capture) on every log row so you can tell at
+a glance which path was used. See
 [`docs/inbound-vs-outbound.md`](docs/inbound-vs-outbound.md) for the
-decision guide.
+decision guide and per-SDK API mapping.
 
 Every Go service follows Clean Architecture (`domain ← usecase ← adapter ← infra/cmd`).
 proxy-gateway keeps p99 overhead < 20ms by making the hot path I/O-free —
@@ -358,7 +360,7 @@ See [`docs/retention.md`](docs/retention.md) for retention tuning.
 
 | Doc | What |
 |-----|------|
-| [`docs/inbound-vs-outbound.md`](docs/inbound-vs-outbound.md) | Concept + decision guide for inbound (server middleware) vs outbound (proxy / SDK) capture |
+| [`docs/inbound-vs-outbound.md`](docs/inbound-vs-outbound.md) | Decision guide: inbound vs outbound, and within outbound — **proxy mode vs capture mode** (per-SDK API mapping included) |
 | [`docs/sdk-publishing.md`](docs/sdk-publishing.md) | One tag → publish 4 SDKs to PyPI / npm / Packagist / Go proxy (CI automated) |
 | [`docs/deployment/`](docs/deployment/) | Pick a platform: [docker-compose](docs/deployment/docker-compose.md) (single VM) or [Kubernetes via Helm](docs/deployment/kubernetes.md) |
 | [`docs/retention.md`](docs/retention.md) | Per-project retention, cleanup scheduling, TTL tiers |
