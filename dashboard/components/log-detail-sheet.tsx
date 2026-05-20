@@ -114,7 +114,11 @@ export function LogDetailSheet({
                 <Stat label="Upstream" value={`${event.upstream_latency_ms} ms`} />
                 <Stat label="TTFB" value={`${event.upstream_ttfb_ms} ms`} />
                 <Stat
-                  label={event.source === "proxy-gateway" ? "Proxy overhead" : "SDK overhead"}
+                  label={
+                    event.source === "proxy-gateway" || event.source === "proxy"
+                      ? "Proxy overhead"
+                      : "SDK overhead"
+                  }
                   value={`${Math.max(0, event.latency_ms - event.upstream_latency_ms)} ms`}
                 />
                 <Stat

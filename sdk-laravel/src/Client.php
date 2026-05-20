@@ -17,7 +17,7 @@ use Echoproxy\Sdk\Redact\Redactor;
  */
 final class Client
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
     public const SOURCE  = 'sdk-laravel';
     public const DIRECTION_INBOUND = 'inbound';
     public const DIRECTION_OUTBOUND = 'outbound';

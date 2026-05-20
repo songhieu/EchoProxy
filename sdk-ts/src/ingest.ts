@@ -49,7 +49,7 @@ export type CaptureEvent = {
 };
 
 const SOURCE = "sdk-ts";
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 function envInt(name: string, def: number): number {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

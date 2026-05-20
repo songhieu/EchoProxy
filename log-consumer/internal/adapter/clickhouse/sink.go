@@ -48,7 +48,7 @@ func (s *Sink) Insert(ctx context.Context, rows []domain.Row) error {
 	for _, r := range rows {
 		ts := time.UnixMilli(r.TimestampMs)
 		direction := r.Direction
-		if direction == "" && r.Source == "proxy" {
+		if direction == "" && (r.Source == "proxy-gateway" || r.Source == "proxy") {
 			direction = "outbound"
 		}
 		if err := batch.Append(

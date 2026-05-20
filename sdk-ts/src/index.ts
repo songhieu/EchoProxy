@@ -7,3 +7,4 @@ export {
   type CaptureEvent,
   type IngestConfig,
 } from "./ingest.js";
+export { captureFetch, type CaptureFetch } from "./capture.js";

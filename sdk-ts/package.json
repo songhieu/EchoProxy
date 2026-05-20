@@ -1,6 +1,6 @@
 {
   "name": "@echoproxy/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript SDK for the EchoProxy HTTP observability platform — capture inbound + outbound HTTP traffic",
   "license": "MIT",
   "author": "songhieu <songhieu2516@gmail.com>",
@@ -43,6 +43,11 @@
       "types": "./dist/ingest.d.ts",
       "import": "./dist/ingest.js",
       "require": "./dist/ingest.cjs"
+    },
+    "./capture": {
+      "types": "./dist/capture.d.ts",
+      "import": "./dist/capture.js",
+      "require": "./dist/capture.cjs"
     }
   },
   "files": ["dist", "src", "README.md", "LICENSE"],

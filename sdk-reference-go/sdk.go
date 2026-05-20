@@ -25,7 +25,7 @@ import (
 	"github.com/songhieu/EchoProxy/pkg/redact"
 )
 
-const Version = "0.1.0"
+const Version = "0.2.0"
 const SourceName = "sdk-go"
 
 // Config controls SDK behavior. Sensible defaults make the zero value usable
@@ -161,6 +161,14 @@ type CaptureInput struct {
 	Query      string
 	Status     int
 	Latency    time.Duration
+	// UpstreamLatency is the time the upstream RoundTrip took (request sent →
+	// response received). In capture mode this is measured by the SDK via
+	// httptrace; in proxy mode the proxy measures it server-side. Optional —
+	// zero means "not measured" and the event will fall back to Latency.
+	UpstreamLatency time.Duration
+	// UpstreamTTFB is the time-to-first-byte from the upstream (request sent →
+	// first response byte). Optional — zero means "not measured".
+	UpstreamTTFB time.Duration
 	ReqHeaders http.Header
 	ResHeaders http.Header
 	ReqBody    []byte
@@ -189,26 +197,28 @@ func (c *Client) CaptureWithDirection(direction string, in CaptureInput) {
 		return
 	}
 	ev := &event.HttpEvent{
-		EventId:     event.NewEventID(),
-		TimestampNs: event.NowNanos(),
-		Source:      SourceName,
-		SdkVersion:  Version,
-		Direction:   direction,
-		Method:      in.Method,
-		Scheme:      in.Scheme,
-		Host:        in.Host,
-		Path:        in.Path,
-		Query:       in.Query,
-		Status:      uint32(in.Status),
-		LatencyMs:   uint32(in.Latency.Milliseconds()),
-		ReqSize:     uint32(len(in.ReqBody)),
-		ResSize:     uint32(len(in.ResBody)),
-		ReqHeaders:  c.snapshotHeaders(in.ReqHeaders),
-		ResHeaders:  c.snapshotHeaders(in.ResHeaders),
-		ClientIp:    in.ClientIP,
-		UserAgent:   in.UserAgent,
-		TraceId:     in.TraceID,
-		Attributes:  in.Attributes,
+		EventId:           event.NewEventID(),
+		TimestampNs:       event.NowNanos(),
+		Source:            SourceName,
+		SdkVersion:        Version,
+		Direction:         direction,
+		Method:            in.Method,
+		Scheme:            in.Scheme,
+		Host:              in.Host,
+		Path:              in.Path,
+		Query:             in.Query,
+		Status:            uint32(in.Status),
+		LatencyMs:         uint32(in.Latency.Milliseconds()),
+		UpstreamLatencyMs: uint32(in.UpstreamLatency.Milliseconds()),
+		UpstreamTtfbMs:    uint32(in.UpstreamTTFB.Milliseconds()),
+		ReqSize:           uint32(len(in.ReqBody)),
+		ResSize:           uint32(len(in.ResBody)),
+		ReqHeaders:        c.snapshotHeaders(in.ReqHeaders),
+		ResHeaders:        c.snapshotHeaders(in.ResHeaders),
+		ClientIp:          in.ClientIP,
+		UserAgent:         in.UserAgent,
+		TraceId:           in.TraceID,
+		Attributes:        in.Attributes,
 	}
 	reqBody, reqTrunc := c.cap(in.ReqBody)
 	resBody, resTrunc := c.cap(in.ResBody)
@@ -317,29 +327,32 @@ func (c *Client) send(ctx context.Context, batch []*event.HttpEvent) error {
 
 func (c *Client) sendHTTP(ctx context.Context, batch []*event.HttpEvent) error {
 	type wireEvent struct {
-		EventID          string            `json:"event_id"`
-		TimestampNs      int64             `json:"timestamp_ns"`
-		Source           string            `json:"source"`
-		SDKVersion       string            `json:"sdk_version"`
-		Method           string            `json:"method"`
-		Scheme           string            `json:"scheme"`
-		Host             string            `json:"host"`
-		Path             string            `json:"path"`
-		Query            string            `json:"query"`
-		Status           uint32            `json:"status"`
-		LatencyMs        uint32            `json:"latency_ms"`
-		ReqSize          uint32            `json:"req_size"`
-		ResSize          uint32            `json:"res_size"`
-		ReqHeaders       map[string]string `json:"req_headers"`
-		ResHeaders       map[string]string `json:"res_headers"`
-		ReqBody          []byte            `json:"req_body"`
-		ResBody          []byte            `json:"res_body"`
-		ReqBodyTruncated bool              `json:"req_body_truncated"`
-		ResBodyTruncated bool              `json:"res_body_truncated"`
-		ClientIP         string            `json:"client_ip"`
-		UserAgent        string            `json:"user_agent"`
-		TraceID          string            `json:"trace_id"`
-		Attributes       map[string]string `json:"attributes"`
+		EventID           string            `json:"event_id"`
+		TimestampNs       int64             `json:"timestamp_ns"`
+		Source            string            `json:"source"`
+		SDKVersion        string            `json:"sdk_version"`
+		Direction         string            `json:"direction"`
+		Method            string            `json:"method"`
+		Scheme            string            `json:"scheme"`
+		Host              string            `json:"host"`
+		Path              string            `json:"path"`
+		Query             string            `json:"query"`
+		Status            uint32            `json:"status"`
+		LatencyMs         uint32            `json:"latency_ms"`
+		UpstreamLatencyMs uint32            `json:"upstream_latency_ms"`
+		UpstreamTtfbMs    uint32            `json:"upstream_ttfb_ms"`
+		ReqSize           uint32            `json:"req_size"`
+		ResSize           uint32            `json:"res_size"`
+		ReqHeaders        map[string]string `json:"req_headers"`
+		ResHeaders        map[string]string `json:"res_headers"`
+		ReqBody           []byte            `json:"req_body"`
+		ResBody           []byte            `json:"res_body"`
+		ReqBodyTruncated  bool              `json:"req_body_truncated"`
+		ResBodyTruncated  bool              `json:"res_body_truncated"`
+		ClientIP          string            `json:"client_ip"`
+		UserAgent         string            `json:"user_agent"`
+		TraceID           string            `json:"trace_id"`
+		Attributes        map[string]string `json:"attributes"`
 	}
 	wire := struct {
 		Events []wireEvent `json:"events"`
@@ -347,8 +360,11 @@ func (c *Client) sendHTTP(ctx context.Context, batch []*event.HttpEvent) error {
 	for _, e := range batch {
 		wire.Events = append(wire.Events, wireEvent{
 			EventID: e.EventId, TimestampNs: e.TimestampNs, Source: e.Source, SDKVersion: e.SdkVersion,
-			Method: e.Method, Scheme: e.Scheme, Host: e.Host, Path: e.Path, Query: e.Query,
-			Status: e.Status, LatencyMs: e.LatencyMs, ReqSize: e.ReqSize, ResSize: e.ResSize,
+			Direction: e.Direction,
+			Method:    e.Method, Scheme: e.Scheme, Host: e.Host, Path: e.Path, Query: e.Query,
+			Status: e.Status, LatencyMs: e.LatencyMs,
+			UpstreamLatencyMs: e.UpstreamLatencyMs, UpstreamTtfbMs: e.UpstreamTtfbMs,
+			ReqSize: e.ReqSize, ResSize: e.ResSize,
 			ReqHeaders: e.ReqHeaders, ResHeaders: e.ResHeaders, ReqBody: e.ReqBody, ResBody: e.ResBody,
 			ReqBodyTruncated: e.ReqBodyTruncated, ResBodyTruncated: e.ResBodyTruncated,
 			ClientIP: e.ClientIp, UserAgent: e.UserAgent, TraceID: e.TraceId, Attributes: e.Attributes,

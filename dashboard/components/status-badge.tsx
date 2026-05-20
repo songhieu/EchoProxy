@@ -4,14 +4,17 @@ import { statusVariant } from "@/lib/utils";
 
 // ModeBadge distinguishes how an event was captured:
 //   - Proxy   → the request went through proxy-gateway (Go did the actual
-//               upstream RoundTrip). Source = "proxy-gateway". Full latency
-//               breakdown (upstream / TTFB / overhead) is authoritative.
+//               upstream RoundTrip). Source = "proxy-gateway" (legacy: "proxy").
+//               Full latency breakdown (upstream / TTFB / overhead) is
+//               authoritative.
 //   - Capture → the SDK called the upstream itself, then shipped an event
 //               to ingest-api. Source = "sdk-*". upstream_latency_ms is the
 //               transport time as measured by the SDK; "overhead" reflects
 //               the in-app wrapper cost (usually tiny), not a proxy hop.
 export function ModeBadge({ source }: { source?: string }) {
-  const isProxy = source === "proxy-gateway";
+  // Accept the pre-0.4 "proxy" source so existing ClickHouse rows still
+  // render with the correct badge without a data migration.
+  const isProxy = source === "proxy-gateway" || source === "proxy";
   if (isProxy) {
     return (
       <Badge

@@ -65,48 +65,19 @@ res, _ := httpClient.Get("https://api.example.com/users")
 
 Config is env-driven (`ECHOPROXY_API_KEY`, `ECHOPROXY_PROXY_URL`); override programmatically with `sid.Configure(apiKey, proxyURL)`.
 
-### Capture mode — call `Client.Capture` from a `RoundTripper`
+### Capture mode — `capture.NewTransport`
 
-The SDK exposes a low-level `Capture(CaptureInput)` so you can instrument any HTTP client. A minimal `http.RoundTripper` wrapper:
+The SDK ships a packaged `http.RoundTripper` that measures upstream latency + TTFB via `httptrace` and emits an outbound event:
 
 ```go
 import (
-    "io"
+    "context"
     "net/http"
-    "time"
+    "os"
 
     sdk "github.com/songhieu/EchoProxy/sdk-reference-go"
+    "github.com/songhieu/EchoProxy/sdk-reference-go/capture"
 )
-
-type capturingTransport struct {
-    next   http.RoundTripper
-    client *sdk.Client
-}
-
-func (t *capturingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-    start := time.Now()
-    res, err := t.next.RoundTrip(req)
-    if err != nil || res == nil {
-        return res, err
-    }
-    resBody, _ := io.ReadAll(res.Body)
-    _ = res.Body.Close()
-    res.Body = io.NopCloser(bytes.NewReader(resBody))
-
-    t.client.CaptureWithDirection(sdk.DirectionOutbound, sdk.CaptureInput{
-        Method:     req.Method,
-        Scheme:     req.URL.Scheme,
-        Host:       req.URL.Host,
-        Path:       req.URL.Path,
-        Query:      req.URL.RawQuery,
-        Status:     res.StatusCode,
-        Latency:    time.Since(start),
-        ReqHeaders: req.Header,
-        ResHeaders: res.Header,
-        ResBody:    resBody,
-    })
-    return res, nil
-}
 
 client, _ := sdk.New(sdk.Config{
     APIKey:       os.Getenv("ECHOPROXY_API_KEY"),
@@ -115,11 +86,27 @@ client, _ := sdk.New(sdk.Config{
 defer client.Close(context.Background())
 
 httpClient := &http.Client{
-    Transport: &capturingTransport{next: http.DefaultTransport, client: client},
+    Transport: capture.NewTransport(nil, client),  // nil → http.DefaultTransport
 }
+res, err := httpClient.Get("https://api.example.com/users")
 ```
 
-Every call now lands in the same dashboard as proxy-mode events, tagged `source = sdk-go`.
+Or wrap a custom base transport (preserves your timeouts, dialer, etc.):
+
+```go
+base := &http.Transport{ /* your tuned defaults */ }
+httpClient := &http.Client{Transport: capture.NewTransport(base, client)}
+```
+
+For libraries that take an `http.Client`, hand them `httpClient`. To instrument the global default:
+
+```go
+http.DefaultClient.Transport = capture.NewTransport(nil, client)
+```
+
+Every call lands in the same dashboard as proxy-mode events, tagged `source = sdk-go`. `upstream_latency_ms` and `upstream_ttfb_ms` are populated from `httptrace`, so the latency breakdown matches proxy mode.
+
+If you need full control over what to capture (custom fields, sampling per call-site, instrumenting a library that doesn't use `http.RoundTripper`), fall back to `Client.CaptureWithDirection(sdk.DirectionOutbound, sdk.CaptureInput{...})` directly.
 
 ## Redaction
 

@@ -1,6 +1,6 @@
 [project]
 name = "echoproxy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for the EchoProxy HTTP observability platform — capture inbound + outbound HTTP traffic"
 readme = "README.md"
 requires-python = ">=3.9"

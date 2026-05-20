@@ -64,10 +64,10 @@ Both modes land in the same ClickHouse table and feed the same dashboard. Logs a
 
 | Language        | Proxy mode               | Capture mode                       |
 |-----------------|--------------------------|------------------------------------|
-| **Go**          | `sdk-reference-go/proxy` (`sid.Get`, `sid.Client()`) | `sdk.Client.Capture` from a `RoundTripper` wrapper |
+| **Go**          | `sdk-reference-go/proxy` (`sid.Get`, `sid.Client()`) | `sdk-reference-go/capture` (`capture.NewTransport`) |
 | **Python**      | `echoproxy.proxy.session()` (drop-in for `requests`) | `echoproxy.httpx_hook.hooks()` (httpx event hooks) |
 | **Laravel/PHP** | `Echoproxy\Sdk\ProxyClient` (drop-in for `Http::*`) | `Echoproxy\Sdk\Http\GuzzleMiddleware` (Guzzle handler stack) |
-| **TypeScript**  | `@echoproxy/sdk-ts` proxy wrapper | `fetch` interceptor               |
+| **TypeScript**  | `@echoproxy/sdk/proxy` (`fetch` wrapper) | `@echoproxy/sdk/capture` (`captureFetch`) |
 
 ## Filtering in the dashboard
 

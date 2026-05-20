@@ -16,7 +16,7 @@ import httpx
 
 from .redact import Redactor
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 SOURCE = "sdk-python"
 DIRECTION_INBOUND = "inbound"
 DIRECTION_OUTBOUND = "outbound"

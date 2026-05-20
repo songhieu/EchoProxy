@@ -20,7 +20,16 @@ func NowNanos() int64 {
 }
 
 // SourceProxy is the value of HttpEvent.Source emitted by proxy-gateway.
-const SourceProxy = "proxy"
+// Matches the service name used everywhere else (docker compose service,
+// k8s deployment, Kafka client ID) and the value the dashboard ModeBadge
+// expects. Legacy events stored with source="proxy" are still recognized
+// downstream — see log-consumer and dashboard ModeBadge.
+const SourceProxy = "proxy-gateway"
+
+// SourceProxyLegacy is the old source value emitted by pre-0.4 proxy-gateway
+// builds. Kept so consumers (log-consumer, analytics) can recognize old rows
+// in ClickHouse without a data migration.
+const SourceProxyLegacy = "proxy"
 
 // SourceSDKPrefix is the conventional prefix for SDK sources (sdk-go, sdk-laravel...).
 const SourceSDKPrefix = "sdk-"
