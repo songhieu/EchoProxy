@@ -2,14 +2,14 @@ name: Mirror sdk-laravel → standalone repo
 
 # Packagist (and Composer in general) requires composer.json at the repo
 # ROOT. EchoProxy is a monorepo, so we mirror sdk-laravel/ subdir into a
-# standalone repo songhieu/echoproxy-laravel using git subtree split.
+# standalone repo songhieu/echoproxy-sdk-laravel using git subtree split.
 # Tags propagate so a `v0.2.0` push here becomes `v0.2.0` over there too.
 #
 # Same pattern Symfony / Laravel use to expose their packages
 # (illuminate/*, symfony/* — all are subtree splits of one monorepo).
 #
 # First-time setup:
-#   1. Create empty repo `songhieu/echoproxy-laravel` (public)
+#   1. Create empty repo `songhieu/echoproxy-sdk-laravel` (public)
 #   2. Generate a PAT at https://github.com/settings/tokens/new
 #      Scope: `repo` (full). Expiry: as long as you want.
 #   3. Add as a repo secret named MIRROR_TOKEN on songhieu/EchoProxy
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   split:
-    name: subtree split → echoproxy-laravel
+    name: subtree split → echoproxy-sdk-laravel
     runs-on: ubuntu-latest
     if: ${{ !github.event.repository.fork }}   # don't try to mirror from a fork
     steps:
@@ -45,7 +45,7 @@ jobs:
           package_directory: sdk-laravel
           # Target repo to push the standalone tree to.
           repository_organization: songhieu
-          repository_name: echoproxy-laravel
+          repository_name: echoproxy-sdk-laravel
           # Branch to push to in the target.
           branch: main
           # Mirror the same git author identity from the original commit.
@@ -59,5 +59,5 @@ jobs:
       - name: notify
         if: github.ref_type == 'tag'
         run: |
-          echo "::notice::Mirrored tag ${{ github.ref_name }} to https://github.com/songhieu/echoproxy-laravel"
+          echo "::notice::Mirrored tag ${{ github.ref_name }} to https://github.com/songhieu/echoproxy-sdk-laravel"
           echo "::notice::Packagist will pick up the new version within ~30 min (instant with webhook)."
