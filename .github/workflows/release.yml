@@ -107,7 +107,10 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           # linux/arm64 in addition to amd64 covers Apple Silicon laptops + Graviton/Ampere nodes.
-          platforms: linux/amd64,linux/arm64
+          # Dashboard skips arm64: QEMU-emulated Next.js builds were crashing with
+          # "uncaught target signal 4 (Illegal instruction)" — all our clusters
+          # run amd64, so the arm64 image was unused weight anyway.
+          platforms: ${{ matrix.service == 'dashboard' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: ${{ matrix.build_args }}
