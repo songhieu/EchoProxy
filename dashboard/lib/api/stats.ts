@@ -20,7 +20,12 @@ async function get<T>(path: string, token: string): Promise<T> {
   });
   // Stale token → auto-logout. Matches auth-api request() behavior.
   if (res.status === 401) redirect("/api/auth/signout?callbackUrl=/login");
-  if (!res.ok) throw new Error(`stats-api ${res.status}`);
+  if (!res.ok) {
+    // Surface the stats-api error body so the dashboard route can return
+    // something diagnosable instead of swallowing the message.
+    const body = await res.text().catch(() => "");
+    throw new Error(`stats-api ${res.status}: ${body.slice(0, 400) || "<empty body>"}`);
+  }
   return res.json() as Promise<T>;
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -95,17 +96,37 @@ func (h *Handler) getLog(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 }
 
 func (h *Handler) timeseries(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	out, err := h.q.TimeSeries(r.Context(), buildAnalyticsFilter(r))
-	writeData(w, out, err)
+	f := buildAnalyticsFilter(r)
+	key := "ts:" + analyticsCacheKey(f)
+	var out []domain.TimeBucket
+	if h.cache.Get(r.Context(), key, &out) {
+		writeJSON(w, stdhttp.StatusOK, out)
+		return
+	}
+	out, err := h.q.TimeSeries(r.Context(), f)
+	if err != nil {
+		writeErr(w, stdhttp.StatusInternalServerError, err.Error())
+		return
+	}
+	h.cache.Set(r.Context(), key, out)
+	writeJSON(w, stdhttp.StatusOK, out)
 }
 
 func (h *Handler) distribution(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	kind := r.URL.Query().Get("kind")
+	switch kind {
+	case "method", "host":
+	default:
+		kind = "status"
+	}
 	f := buildAnalyticsFilter(r)
-	var (
-		out []domain.Bucket
-		err error
-	)
+	key := "dist:" + kind + ":" + analyticsCacheKey(f)
+	var out []domain.Bucket
+	if h.cache.Get(r.Context(), key, &out) {
+		writeJSON(w, stdhttp.StatusOK, out)
+		return
+	}
+	var err error
 	switch kind {
 	case "method":
 		out, err = h.q.MethodDistribution(r.Context(), f)
@@ -114,13 +135,40 @@ func (h *Handler) distribution(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	default:
 		out, err = h.q.StatusDistribution(r.Context(), f)
 	}
-	writeData(w, out, err)
+	if err != nil {
+		writeErr(w, stdhttp.StatusInternalServerError, err.Error())
+		return
+	}
+	h.cache.Set(r.Context(), key, out)
+	writeJSON(w, stdhttp.StatusOK, out)
 }
 
 func (h *Handler) endpoints(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	limit := int(parseUint(r.URL.Query().Get("limit")))
-	out, err := h.q.EndpointStats(r.Context(), buildAnalyticsFilter(r), limit)
-	writeData(w, out, err)
+	f := buildAnalyticsFilter(r)
+	key := "ep:" + strconv.Itoa(limit) + ":" + analyticsCacheKey(f)
+	var out []domain.EndpointStat
+	if h.cache.Get(r.Context(), key, &out) {
+		writeJSON(w, stdhttp.StatusOK, out)
+		return
+	}
+	out, err := h.q.EndpointStats(r.Context(), f, limit)
+	if err != nil {
+		writeErr(w, stdhttp.StatusInternalServerError, err.Error())
+		return
+	}
+	h.cache.Set(r.Context(), key, out)
+	writeJSON(w, stdhttp.StatusOK, out)
+}
+
+// analyticsCacheKey builds a stable cache key from the filter. Time is
+// rounded to the minute so jittery refreshes still share a cache entry.
+func analyticsCacheKey(f domain.AnalyticsFilter) string {
+	return strconv.FormatUint(f.ProjectID, 10) + "|" +
+		strconv.FormatUint(f.APIKeyID, 10) + "|" +
+		f.Method + "|" + f.Host + "|" + f.PathLike + "|" + f.Direction + "|" +
+		f.From.UTC().Truncate(time.Minute).Format(time.RFC3339) + "|" +
+		f.To.UTC().Truncate(time.Minute).Format(time.RFC3339)
 }
 
 func buildAnalyticsFilter(r *stdhttp.Request) domain.AnalyticsFilter {
@@ -270,5 +318,11 @@ func writeJSON(w stdhttp.ResponseWriter, code int, v any) {
 }
 
 func writeErr(w stdhttp.ResponseWriter, code int, msg string) {
+	// Server-side errors (5xx) should leave a breadcrumb in stderr — we have
+	// no request-logger middleware, and without this the only signal at the
+	// edge is "stats-api 500" with no detail.
+	if code >= 500 {
+		log.Printf("stats-api %d: %s", code, msg)
+	}
 	writeJSON(w, code, map[string]string{"error": msg})
 }
